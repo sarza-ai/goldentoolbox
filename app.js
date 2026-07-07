@@ -35,7 +35,7 @@
       note.className = 'form-note ok';
     }).catch(function () {
       btn.disabled = false;
-      btn.textContent = 'Get my free look';
+      btn.textContent = 'Book my free Toolbox Checkup';
       note.textContent = 'Something went wrong. Email us at hello@sarza.ai and we will get right back to you.';
       note.className = 'form-note err';
     });
