@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Golden Toolbox">
+  <defs>
+    <linearGradient id="fv-gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EFCB68"/>
+      <stop offset="0.55" stop-color="#C9962B"/>
+      <stop offset="1" stop-color="#9A6E1B"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#221B12"/>
+  <path d="M24 24 v-4 a4 4 0 0 1 4 -4 h8 a4 4 0 0 1 4 4 v4" fill="none" stroke="url(#fv-gold)" stroke-width="4" stroke-linecap="round"/>
+  <rect x="10" y="24" width="44" height="26" rx="4" fill="url(#fv-gold)"/>
+  <rect x="10" y="34" width="44" height="2.4" fill="#7C5715" opacity="0.55"/>
+  <rect x="27.5" y="31.5" width="9" height="7.5" rx="1.8" fill="#F6EFE3"/>
+</svg>
