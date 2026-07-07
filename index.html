@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,700;1,9..144,900&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/styles.css?v=1" />
+<link rel="stylesheet" href="/styles.css?v=2" />
 
 <!-- Structured data -->
 <script type="application/ld+json">
@@ -119,27 +119,129 @@
   <section class="section" id="tools">
     <p class="eyebrow"><span class="fl"></span>What's in the box<span class="fl"></span></p>
     <h2>Four tools. <em>One golden toolbox.</em></h2>
-    <div class="tools-grid">
-      <article class="tool reveal">
-        <span class="tool-num">01</span>
+    <nav class="tool-chips" aria-label="The four tools">
+      <a href="#tool-reviews" class="chip"><b>01</b> The Review Tool</a>
+      <a href="#tool-website" class="chip"><b>02</b> The Website Tool</a>
+      <a href="#tool-booking" class="chip"><b>03</b> The Booking Tool</a>
+      <a href="#tool-time" class="chip"><b>04</b> The Time Tool</a>
+    </nav>
+  </section>
+
+  <!-- FEATURE: REVIEWS -->
+  <section class="feature" id="tool-reviews">
+    <div class="feature-inner">
+      <div class="feature-copy reveal">
+        <span class="tool-num">Tool 01</span>
         <h3>The Review Tool</h3>
-        <p>Every finished job gets a friendly text asking how it went, with a one tap link to leave a Google review. We also reach back out to the past customers you never asked. Your rating finally catches up to your work.</p>
-      </article>
-      <article class="tool reveal">
-        <span class="tool-num">02</span>
+        <p class="feature-lead">Most crews do great work and never ask for the review. So the guy with worse work and more stars keeps winning the search. We fix that on autopilot.</p>
+        <ul class="feature-list">
+          <li>Every finished job gets a friendly text with a one tap Google review link</li>
+          <li>A catch up blast reaches the past customers you never asked</li>
+          <li>New reviews roll in weekly without you touching a thing</li>
+        </ul>
+      </div>
+      <div class="feature-demo reveal">
+        <div class="phone">
+          <span class="phone-bar"></span>
+          <p class="msg out">Thanks for letting us pour your new driveway, Mike! How did everything turn out?</p>
+          <p class="msg in">Looks great. Crew was awesome</p>
+          <p class="msg out">Glad to hear it! Would you mind sharing that in a quick Google review? Takes 30 seconds 🙏</p>
+          <div class="rev-card">
+            <span class="rev-stars">★★★★★</span>
+            <p class="rev-text">"Crew was awesome. Driveway looks perfect. Showed up on time and cleaned up after."</p>
+            <span class="rev-name">Mike R. · Google review</span>
+          </div>
+        </div>
+        <p class="demo-cap">Sent automatically two hours after the job wraps</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURE: WEBSITE -->
+  <section class="feature feature-alt" id="tool-website">
+    <div class="feature-inner">
+      <div class="feature-copy reveal">
+        <span class="tool-num">Tool 02</span>
         <h3>The Website Tool</h3>
-        <p>A fast, modern site that shows up on Google and in AI answers, with a virtual assistant that answers questions and books jobs while you sleep. Built to win the customer before they ever call around.</p>
-      </article>
-      <article class="tool reveal">
-        <span class="tool-num">03</span>
+        <p class="feature-lead">Your website should be your hardest worker. Fast, sharp on a phone, found on Google and in AI answers, and able to book a job at midnight without you.</p>
+        <ul class="feature-list">
+          <li>Modern site that loads instantly and looks great on every phone</li>
+          <li>Built to show up in Google, Maps, and AI powered search answers</li>
+          <li>A virtual agent that answers questions and books jobs 24/7</li>
+        </ul>
+      </div>
+      <div class="feature-demo reveal">
+        <div class="browser">
+          <span class="browser-dots"><i></i><i></i><i></i></span>
+          <div class="browser-hero">
+            <b>Sam's Concrete</b>
+            <span class="browser-stars">★ 4.9 · Denver, CO</span>
+          </div>
+          <div class="chatw">
+            <p class="msg in"><span class="msg-time">11:42 PM</span>Do you guys do stamped patios?</p>
+            <p class="msg out">We sure do. Want a free quote? I can get you on the schedule this week.</p>
+            <span class="chat-btn">Book a free quote</span>
+          </div>
+        </div>
+        <p class="demo-cap">Your website, closing a job at 11:42 PM</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURE: BOOKING -->
+  <section class="feature" id="tool-booking">
+    <div class="feature-inner">
+      <div class="feature-copy reveal">
+        <span class="tool-num">Tool 03</span>
         <h3>The Booking Tool</h3>
-        <p>Missed calls get an instant text back, so the job never goes to the next guy in the search results. Customers book themselves straight into your calendar. No phone tag, no lost work.</p>
-      </article>
-      <article class="tool reveal">
-        <span class="tool-num">04</span>
+        <p class="feature-lead">When you're on a roof or under a sink, missed calls go to the next name in the search results. Not anymore. Every missed call gets a text back in seconds.</p>
+        <ul class="feature-list">
+          <li>Instant text back on every call you can't pick up</li>
+          <li>Customers book themselves straight into your calendar</li>
+          <li>Works nights, weekends, and while you're on the job</li>
+        </ul>
+      </div>
+      <div class="feature-demo reveal">
+        <div class="phone">
+          <span class="phone-bar"></span>
+          <div class="missed">☎ Missed call · (303) 555 0142 · 12:07 PM</div>
+          <p class="msg out">Hey, this is Sam's Concrete. Sorry we missed your call! How can we help?</p>
+          <p class="msg in">Need a quote on a patio tear out</p>
+          <p class="msg out">Can do. Pick a time that works and we'll come take a look 👇</p>
+          <div class="cal-card">
+            <span class="cal-title">Free quote visit</span>
+            <span class="cal-slot">Thursday · 9:00 AM <b>✓ Booked</b></span>
+          </div>
+        </div>
+        <p class="demo-cap">From missed call to booked quote in four minutes</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURE: TIME -->
+  <section class="feature feature-alt" id="tool-time">
+    <div class="feature-inner">
+      <div class="feature-copy reveal">
+        <span class="tool-num">Tool 04</span>
         <h3>The Time Tool</h3>
-        <p>Custom automations for the paperwork that eats your evenings. Invoices, follow ups, reminders, and scheduling, handled quietly in the background so you can go home when the work is done.</p>
-      </article>
+        <p class="feature-lead">The work day ends at five. The paperwork day used to end at nine. Custom automations handle the invoices, follow ups, and reminders so your evening is yours again.</p>
+        <ul class="feature-list">
+          <li>Invoices and estimate follow ups send themselves</li>
+          <li>Appointment reminders that cut down no shows</li>
+          <li>Built around the tools you already use, nothing new to learn</li>
+        </ul>
+      </div>
+      <div class="feature-demo reveal">
+        <div class="tasklist">
+          <span class="tasklist-title">Tonight, handled for you</span>
+          <p class="task"><b>✓</b> 6 invoices sent <span>5:30 PM</span></p>
+          <p class="task"><b>✓</b> 3 estimates followed up <span>6:15 PM</span></p>
+          <p class="task"><b>✓</b> Tomorrow's reminders texted <span>7:00 PM</span></p>
+          <p class="task"><b>✓</b> 2 review requests sent <span>7:30 PM</span></p>
+          <p class="task-you">You? Home by six.</p>
+        </div>
+        <p class="demo-cap">The paperwork does itself</p>
+      </div>
     </div>
   </section>
 
