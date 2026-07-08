@@ -12,8 +12,8 @@
   --line:    rgba(34, 27, 18, 0.14);
   --line-2:  rgba(34, 27, 18, 0.3);
   --ease:    cubic-bezier(0.16, 1, 0.3, 1);
-  --disp:    'Fraunces', Georgia, serif;
-  --body:    'Work Sans', system-ui, sans-serif;
+  --disp:    'Playfair Display', Georgia, serif;
+  --body:    'Manrope', system-ui, -apple-system, sans-serif;
   --maxw:    1100px;
   --pad:     clamp(20px, 5vw, 56px);
 }
@@ -323,6 +323,40 @@ h2 { font-size: clamp(30px, 4.6vw, 52px); margin-bottom: 2.6rem; }
 .step h3 { font-family: var(--disp); font-weight: 900; font-size: 20px; margin-bottom: 0.5rem; }
 .step p { color: var(--muted); font-size: 15px; }
 
+/* ---------- faq ---------- */
+.section-tight { padding-top: clamp(40px, 6vw, 72px); }
+.faq {
+  max-width: 760px; margin: 0 auto; text-align: left;
+}
+details {
+  border-top: 1px solid var(--line); padding: 0;
+}
+details:last-child { border-bottom: 1px solid var(--line); }
+details[open] { background: #FDFAF3; }
+summary {
+  list-style: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 18px 6px;
+  font-family: var(--disp); font-weight: 700; font-size: clamp(16px, 1.8vw, 19px);
+  line-height: 1.3; color: var(--ink);
+  transition: color 0.25s;
+}
+summary::-webkit-details-marker { display: none; }
+summary:hover { color: var(--gold-lo); }
+summary::after {
+  content: "+"; flex: none; font-family: var(--body); font-weight: 600;
+  font-size: 22px; line-height: 1; color: var(--gold-lo);
+  transition: transform 0.3s var(--ease);
+}
+details[open] summary::after { content: "−"; }
+.faq p {
+  color: var(--muted); font-size: 15.5px; line-height: 1.65;
+  padding: 0 6px 20px; max-width: 64ch;
+}
+@media (prefers-reduced-motion: reduce) {
+  summary::after { transition: none; }
+}
+
 /* ---------- contact ---------- */
 .contact { max-width: 720px; }
 .contact-sub { color: var(--muted); max-width: 52ch; margin: -1.2rem auto 2.4rem; font-size: 15.5px; }
@@ -359,6 +393,42 @@ h2 { font-size: clamp(30px, 4.6vw, 52px); margin-bottom: 2.6rem; }
 .foot-line { color: var(--muted); font-size: 14px; margin-top: 4px; }
 .foot-copy { color: var(--muted); font-size: 12px; margin-top: 1.6rem; opacity: 0.8; }
 
+/* ---------- paper warmth ---------- */
+body {
+  background-image:
+    radial-gradient(900px 480px at 50% -8%, rgba(239, 203, 104, 0.18), transparent 70%),
+    radial-gradient(700px 520px at 100% 0%, rgba(201, 150, 43, 0.06), transparent 60%);
+  background-repeat: no-repeat;
+}
+
+/* ---------- who's behind it ---------- */
+.who-card {
+  max-width: 720px; margin: 0 auto; text-align: center;
+  background: #FDFAF3; border: 1.5px solid var(--line); border-radius: 18px;
+  padding: clamp(36px, 5vw, 56px) clamp(24px, 4vw, 44px);
+  box-shadow: 0 16px 44px rgba(34, 27, 18, 0.10);
+}
+.who-avatar { width: 64px; margin: 0 auto 1.4rem; }
+.who h2 { margin-bottom: 1.2rem; }
+.who-lead {
+  color: var(--muted); max-width: 52ch; margin: 0 auto;
+  font-size: clamp(15px, 1.7vw, 17px); line-height: 1.65;
+}
+.who-sign {
+  font-family: var(--disp); font-style: italic; font-weight: 700;
+  color: var(--gold-lo); margin-top: 1.4rem; font-size: 16px;
+}
+
+/* ---------- form reassurance ---------- */
+.form-reassure {
+  display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center;
+  margin: 4px 0 16px; font-size: 12.5px; font-weight: 600; color: var(--muted);
+}
+.form-reassure span::before { content: "✓ "; color: var(--gold-lo); }
+
+/* ---------- sticky mobile CTA ---------- */
+.mobile-cta { display: none; }
+
 /* ---------- reveal ---------- */
 .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.9s var(--ease), transform 0.9s var(--ease); }
 .reveal.in { opacity: 1; transform: none; }
@@ -377,6 +447,14 @@ h2 { font-size: clamp(30px, 4.6vw, 52px); margin-bottom: 2.6rem; }
   .hero-scene { flex-direction: column; align-items: center; gap: 10px; }
   .notif { position: static; animation: none; }
   .n3, .n4 { display: none; }
+  body { padding-bottom: 72px; }
+  .mobile-cta {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(246, 239, 227, 0.96); backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line);
+  }
+  .mobile-cta .btn { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

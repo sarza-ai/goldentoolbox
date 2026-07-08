@@ -31,8 +31,8 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,700;1,9..144,900&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/styles.css?v=3" />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/styles.css?v=9" />
 
 <!-- Structured data -->
 <script type="application/ld+json">
@@ -46,6 +46,87 @@
   "description": "Golden Toolbox helps local trades and home service businesses win more customers and save time. Review systems, modern websites, automated booking, and custom automations.",
   "areaServed": "US",
   "knowsAbout": ["Google review automation", "Local business websites", "Missed call text back", "Appointment booking automation", "Small business automation"]
+}
+</script>
+
+<!-- Services + FAQ structured data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Service",
+      "name": "The Reputation Tool",
+      "serviceType": "Google review automation for local trades",
+      "url": "https://goldentoolbox.com/#tool-reviews",
+      "provider": { "@id": "https://goldentoolbox.com/#org" },
+      "areaServed": { "@type": "Country", "name": "United States" },
+      "description": "Automated text-based review requests after each finished job, plus a catch-up blast to past customers, so local trades collect more five-star Google reviews without lifting a finger."
+    },
+    {
+      "@type": "Service",
+      "name": "The Visibility Tool",
+      "serviceType": "Local business websites and search visibility",
+      "url": "https://goldentoolbox.com/#tool-website",
+      "provider": { "@id": "https://goldentoolbox.com/#org" },
+      "areaServed": { "@type": "Country", "name": "United States" },
+      "description": "Fast, mobile-friendly websites for local trades, built to show up in Google, Maps, and AI-powered search answers, with a virtual agent that answers questions and books jobs around the clock."
+    },
+    {
+      "@type": "Service",
+      "name": "The Lead Capture Tool",
+      "serviceType": "Missed call text back and self-serve booking",
+      "url": "https://goldentoolbox.com/#tool-booking",
+      "provider": { "@id": "https://goldentoolbox.com/#org" },
+      "areaServed": { "@type": "Country", "name": "United States" },
+      "description": "Instant text back on every missed call so local trades stop losing leads to the next name in search, with customers booking themselves straight into the calendar, nights and weekends included."
+    },
+    {
+      "@type": "Service",
+      "name": "The Time Tool",
+      "serviceType": "Custom automations for local trades",
+      "url": "https://goldentoolbox.com/#tool-time",
+      "provider": { "@id": "https://goldentoolbox.com/#org" },
+      "areaServed": { "@type": "Country", "name": "United States" },
+      "description": "Custom automations that send invoices, follow up on estimates, and text appointment reminders for local trades, built around the tools they already use, so the paperwork does itself."
+    },
+    {
+      "@type": "FAQPage",
+      "url": "https://goldentoolbox.com/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Do I have to replace my current website?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. We can sharpen the site you already have, or build a fresh one. Either way it ends up fast, mobile-friendly, and built to show up in Google, Maps, and AI search answers." }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens if I miss a call after hours?",
+          "acceptedAnswer": { "@type": "Answer", "text": "The Lead Capture Tool texts the caller back in seconds, lets them tell you what they need, and books a quote visit straight into your calendar. You stop losing leads to the next name in the results." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is there a contract?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No long contracts. Plain English, month to month. The free Toolbox Checkup costs nothing and the findings are yours to keep whether you hire us or not." }
+        },
+        {
+          "@type": "Question",
+          "name": "Will this work for my trade?",
+          "acceptedAnswer": { "@type": "Answer", "text": "If you serve local homeowners and businesses, yes. Concrete, plumbing, HVAC, electrical, roofing, landscaping, painting, fencing, garage doors, tree service, pressure washing, remodeling, and handyman work are all in our lane." }
+        },
+        {
+          "@type": "Question",
+          "name": "How fast does it start working?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Review requests start going out as soon as you are set up, so the first new reviews come in around your next finished jobs. We will not promise a magic number. We show you what is actually happening each month." }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the free Toolbox Checkup?",
+          "acceptedAnswer": { "@type": "Answer", "text": "A fifteen-minute review of your Google reviews, your website, and what happens when you miss a call. We reply within one business day with what we found, in plain English, and the findings are yours to keep." }
+        }
+      ]
+    }
+  ]
 }
 </script>
 </head>
@@ -173,7 +254,7 @@
     <div class="feature-inner">
       <div class="feature-copy reveal">
         <span class="tool-num">Tool 02 · The Visibility Tool</span>
-        <h3>Get found by everyone <em>searching your trade</em></h3>
+        <h3>Show up everywhere <em>your customers search</em></h3>
         <p class="feature-lead">Your website should be your hardest worker. Fast, sharp on a phone, found on Google and in AI answers, and able to book a job at midnight without you.</p>
         <ul class="feature-list">
           <li>Modern site that loads instantly and looks great on every phone</li>
@@ -284,6 +365,61 @@
     </div>
   </section>
 
+  <!-- FAQ -->
+  <section class="section section-tight" id="faq">
+    <p class="eyebrow"><span class="fl"></span>Straight answers<span class="fl"></span></p>
+    <h2>The questions <em>trades owners ask.</em></h2>
+    <div class="faq">
+      <details>
+        <summary>Do I have to replace my current website?</summary>
+        <p>No. We can sharpen the site you already have, or build a fresh one. Either way it ends up fast, mobile-friendly, and built to show up in Google, Maps, and AI search answers.</p>
+      </details>
+      <details>
+        <summary>What happens if I miss a call after hours?</summary>
+        <p>The Lead Capture Tool texts the caller back in seconds, lets them tell you what they need, and books a quote visit straight into your calendar. You stop losing leads to the next name in the results.</p>
+      </details>
+      <details>
+        <summary>Is there a contract?</summary>
+        <p>No long contracts. Plain English, month to month. The free Toolbox Checkup costs nothing, and the findings are yours to keep whether you hire us or not.</p>
+      </details>
+      <details>
+        <summary>Will this work for my trade?</summary>
+        <p>If you serve local homeowners and businesses, yes. Concrete, plumbing, HVAC, electrical, roofing, landscaping, painting, fencing, garage doors, tree service, pressure washing, remodeling, and handyman work are all in our lane.</p>
+      </details>
+      <details>
+        <summary>How fast does it start working?</summary>
+        <p>Review requests start going out as soon as you are set up, so the first new reviews come in around your next finished jobs. We will not promise a magic number. We show you what is actually happening each month.</p>
+      </details>
+      <details>
+        <summary>What is the free Toolbox Checkup?</summary>
+        <p>A fifteen-minute review of your Google reviews, your website, and what happens when you miss a call. We reply within one business day with what we found, in plain English, and the findings are yours to keep.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- WHO'S BEHIND IT -->
+  <section class="section who" id="who">
+    <p class="eyebrow"><span class="fl"></span>Who's behind the box<span class="fl"></span></p>
+    <div class="who-card reveal">
+      <div class="who-avatar" aria-hidden="true">
+        <svg viewBox="0 0 64 64" width="64" height="64" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="who-gold" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#EFCB68"/><stop offset=".55" stop-color="#C9962B"/><stop offset="1" stop-color="#9A6E1B"/>
+            </linearGradient>
+          </defs>
+          <circle cx="32" cy="32" r="32" fill="url(#who-gold)"/>
+          <path d="M22 22 v-3 a3 3 0 0 1 3 -3 h14 a3 3 0 0 1 3 3 v3" fill="none" stroke="#221B12" stroke-width="3" stroke-linecap="round"/>
+          <rect x="10" y="22" width="44" height="26" rx="4" fill="#221B12"/>
+          <rect x="28" y="30" width="8" height="7" rx="1.5" fill="#EFCB68"/>
+        </svg>
+      </div>
+      <h2>We got tired of good trades <em>losing to worse ones.</em></h2>
+      <p class="who-lead">Golden Toolbox exists because the best crew in town doesn't always win — the one with better reviews and a faster phone does. We're a small, focused outfit that handles the marketing busywork so you can do the work that actually pays. No call centers, no jargon, no long contracts.</p>
+      <p class="who-sign">— The Golden Toolbox crew</p>
+    </div>
+  </section>
+
   <!-- CONTACT -->
   <section class="section contact" id="contact">
     <p class="eyebrow"><span class="fl"></span>The Toolbox Checkup<span class="fl"></span></p>
@@ -311,6 +447,7 @@
           <input type="tel" id="phone" name="Phone" placeholder="So we can text you the results" autocomplete="tel" />
         </div>
       </div>
+      <p class="form-reassure"><span>No contract</span><span>No spam</span><span>Reply within one business day</span></p>
       <button type="submit" class="btn btn-gold btn-wide" id="submit-btn">Book my free Toolbox Checkup</button>
       <p class="form-note" id="form-note">We never share your info, and there is nothing to unsubscribe from.</p>
     </form>
@@ -322,10 +459,14 @@
 <footer class="site-footer">
   <div class="foot-rule" aria-hidden="true"><span>✦</span></div>
   <p class="foot-brand">Golden Toolbox</p>
-  <p class="foot-line">More customers. Fewer headaches. Denver, Colorado.</p>
+  <p class="foot-line">More customers. Fewer headaches. Built for local trades across the US.</p>
   <p class="foot-copy">© 2026 Golden Toolbox. All rights reserved.</p>
 </footer>
 
-<script src="/app.js?v=1" defer></script>
+<script src="/app.js?v=3" defer></script>
+<div class="mobile-cta">
+  <a href="#contact" class="btn btn-gold">Free Toolbox Checkup</a>
+</div>
+<script src="/app.js?v=3" defer></script>
 </body>
 </html>
