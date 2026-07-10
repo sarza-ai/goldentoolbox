@@ -13,6 +13,16 @@
     items.forEach(function (el) { el.classList.add('in'); });
   }
 
+  // header lift on scroll
+  var header = document.getElementById('site-header');
+  if (header) {
+    var onScroll = function () {
+      header.classList.toggle('scrolled', window.scrollY > 12);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
   // contact form
   var form = document.getElementById('contact-form');
   var btn = document.getElementById('submit-btn');
