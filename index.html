@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/styles.css?v=10" />
+<link rel="stylesheet" href="/styles.css?v=11" />
 
 <!-- Structured data -->
 <script type="application/ld+json">
@@ -155,6 +155,64 @@
 
   <!-- HERO -->
   <section class="hero">
+    <!-- floating tool stickers -->
+    <span class="ftool ft1" data-par="0.10" aria-hidden="true">
+      <svg viewBox="0 0 64 64" width="58" height="58" xmlns="http://www.w3.org/2000/svg">
+        <path d="M43 9a12 12 0 0 0-14.5 15L11 41.5A7.5 7.5 0 1 0 21.6 52L39 34.6A12 12 0 0 0 54 20l-8.2 8.2-7.5-2.5-2.5-7.5L44 10z" fill="#C9962B" stroke="#7C5715" stroke-width="2.5" stroke-linejoin="round"/>
+      </svg>
+    </span>
+    <span class="ftool ft2" data-par="-0.07" aria-hidden="true">
+      <svg viewBox="0 0 64 64" width="54" height="54" xmlns="http://www.w3.org/2000/svg">
+        <g transform="rotate(40 32 32)">
+          <rect x="28.5" y="20" width="8" height="34" rx="3.5" fill="#B08030" stroke="#7C5715" stroke-width="2.5"/>
+          <path d="M16 8h26a6 6 0 0 1 6 6v4a3 3 0 0 1-3 3H16a5 5 0 0 1-5-5v-3a5 5 0 0 1 5-5z" fill="#C9962B" stroke="#7C5715" stroke-width="2.5" stroke-linejoin="round"/>
+        </g>
+      </svg>
+    </span>
+    <span class="ftool ft3 ft-mid" data-par="0.14" aria-hidden="true">
+      <svg viewBox="0 0 64 64" width="46" height="46" xmlns="http://www.w3.org/2000/svg">
+        <g transform="rotate(-38 32 32)">
+          <rect x="26" y="6" width="12" height="20" rx="5" fill="#C9962B" stroke="#7C5715" stroke-width="2.5"/>
+          <rect x="29.5" y="26" width="5" height="22" fill="#B08030" stroke="#7C5715" stroke-width="2"/>
+          <path d="M29.5 48l2.5 8 2.5-8z" fill="#7C5715"/>
+        </g>
+      </svg>
+    </span>
+    <span class="ftool ft4 ft-mid" data-par="-0.11" aria-hidden="true">
+      <svg viewBox="0 0 64 64" width="52" height="52" xmlns="http://www.w3.org/2000/svg">
+        <rect x="8" y="10" width="34" height="16" rx="7" fill="#C9962B" stroke="#7C5715" stroke-width="2.5"/>
+        <path d="M44 18h6v10a4 4 0 0 1-4 4H34v8" fill="none" stroke="#7C5715" stroke-width="4" stroke-linecap="round"/>
+        <rect x="30" y="40" width="8" height="16" rx="3" fill="#B08030" stroke="#7C5715" stroke-width="2.5"/>
+      </svg>
+    </span>
+    <span class="ftool ft5" data-par="0.06" aria-hidden="true">
+      <svg viewBox="0 0 64 64" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+        <rect x="8" y="14" width="40" height="36" rx="10" fill="#C9962B" stroke="#7C5715" stroke-width="2.5"/>
+        <circle cx="28" cy="32" r="8" fill="#F6EFE3" stroke="#7C5715" stroke-width="2.5"/>
+        <path d="M48 38h8v8h-8z" fill="#EFCB68" stroke="#7C5715" stroke-width="2.5"/>
+      </svg>
+    </span>
+
+    <!-- spinning sticker badge -->
+    <a class="badge-spin" href="#contact" aria-label="Get your free Toolbox Checkup">
+      <svg viewBox="0 0 120 120" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <path id="badge-circ" d="M60,60 m-45,0 a45,45 0 1,1 90,0 a45,45 0 1,1 -90,0"/>
+        </defs>
+        <circle cx="60" cy="60" r="58" fill="#F6EFE3" stroke="#C9962B" stroke-width="2.5"/>
+        <g class="badge-rotor">
+          <text font-size="11.5" font-weight="700" letter-spacing="2" fill="#221B12">
+            <textPath href="#badge-circ" textLength="282" lengthAdjust="spacingAndGlyphs">FREE TOOLBOX CHECKUP ✦ NO PRESSURE ✦&#160;</textPath>
+          </text>
+        </g>
+        <g transform="translate(60 62)">
+          <path d="M-7 -8 v-2.5a2.5 2.5 0 0 1 2.5-2.5h9a2.5 2.5 0 0 1 2.5 2.5V-8" fill="none" stroke="#C9962B" stroke-width="3" stroke-linecap="round"/>
+          <rect x="-15" y="-8" width="30" height="19" rx="3" fill="#C9962B"/>
+          <rect x="-4" y="-3" width="8" height="6.5" rx="1.5" fill="#F6EFE3"/>
+        </g>
+      </svg>
+    </a>
+
     <p class="eyebrow"><span class="fl"></span>For local trades and home services<span class="fl"></span></p>
     <h1>Open it up.<br /><em>Watch the phone ring.</em></h1>
     <p class="hero-sub">We help local contractors get found online, collect more five star reviews, answer every lead, and automate the follow up, without adding one more thing to your day. You do the work. We make sure the town knows about it.</p>
@@ -339,6 +397,19 @@
 
   <!-- STATEMENT -->
   <section class="statement">
+    <span class="ftool ft-dark fd1" data-par="0.09" aria-hidden="true">
+      <svg viewBox="0 0 64 64" width="72" height="72" xmlns="http://www.w3.org/2000/svg">
+        <path d="M43 9a12 12 0 0 0-14.5 15L11 41.5A7.5 7.5 0 1 0 21.6 52L39 34.6A12 12 0 0 0 54 20l-8.2 8.2-7.5-2.5-2.5-7.5L44 10z" fill="#C9962B"/>
+      </svg>
+    </span>
+    <span class="ftool ft-dark fd2" data-par="-0.06" aria-hidden="true">
+      <svg viewBox="0 0 64 64" width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+        <g transform="rotate(40 32 32)">
+          <rect x="28.5" y="20" width="8" height="34" rx="3.5" fill="#C9962B"/>
+          <path d="M16 8h26a6 6 0 0 1 6 6v4a3 3 0 0 1-3 3H16a5 5 0 0 1-5-5v-3a5 5 0 0 1 5-5z" fill="#C9962B"/>
+        </g>
+      </svg>
+    </span>
     <p>Your best marketing is a happy customer.<br /><em>We just make sure the whole town hears about it.</em></p>
   </section>
 
@@ -463,7 +534,7 @@
   <p class="foot-copy">© 2026 Golden Toolbox. All rights reserved.</p>
 </footer>
 
-<script src="/app.js?v=4" defer></script>
+<script src="/app.js?v=5" defer></script>
 <div class="mobile-cta">
   <a href="#contact" class="btn btn-gold">Free Toolbox Checkup</a>
 </div>
