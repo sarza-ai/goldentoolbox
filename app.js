@@ -83,7 +83,7 @@
       note.className = 'form-note ok';
     }).catch(function () {
       btn.disabled = false;
-      btn.textContent = 'Book my free Toolbox Checkup';
+      btn.textContent = 'Book my free Business Checkup';
       note.textContent = 'Something went wrong. Email us at hello@goldentoolbox.com and we will get right back to you.';
       note.className = 'form-note err';
     });
