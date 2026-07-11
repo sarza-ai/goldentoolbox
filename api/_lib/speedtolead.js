@@ -6,7 +6,6 @@
    already fetched for the techstack scan — no extra network call. */
 
 const { parsePhoneNumberFromString } = require('libphonenumber-js');
-const copy = require('./copy');
 
 const BOOKING_SIGNATURES = /calendly\.com|acuityscheduling\.com|squareup\.com\/appointments|setmore\.com|housecallpro\.com|schedulicity\.com|servicetitan\.com\/book|book(?:ing)?[-_]?widget/i;
 
@@ -55,7 +54,9 @@ function buildSpeedToLead(phone, chatFound, html) {
 
   const summary = !htmlAvailable
     ? `Estimated phone type: ${phoneEst.type}. We couldn't check your site for an after-hours path.`
-    : copy.speedToLeadSummary(afterHoursPath);
+    : afterHoursPath
+      ? 'You have at least one after-hours path, but a missed call still goes unanswered.'
+      : 'Right now, a missed call after hours just goes to voicemail — and the next name down.';
 
   return {
     score: Math.min(100, score),

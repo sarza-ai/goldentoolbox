@@ -6,7 +6,6 @@
 
 const { rng, normalizeDomain, titleCase, rankByRating } = require('./util');
 const { CATEGORIES, grade, rollup, framingFor } = require('./config');
-const copy = require('./copy');
 
 const TRADES = [
   ['concrete', 'Concrete'], ['plumb', 'Plumbing'], ['hvac', 'HVAC'],
@@ -101,7 +100,9 @@ function catBusinessDetails(r) {
   if (hasBlog) score += 20;
   return {
     score: Math.min(100, score),
-    summary: copy.businessDetailsSummary(hasChat, chatProvider),
+    summary: hasChat
+      ? `We detected a ${chatProvider} chat widget on your site.`
+      : 'No live chat or instant-answer widget detected on your site.',
     details: {
       chatWidget: hasChat,
       chatProvider,
@@ -130,7 +131,9 @@ function catTechnoStack(r) {
   const score = Math.round((found / 5) * 100);
   return {
     score,
-    summary: copy.technoStackSummary(found, 5),
+    summary: found === 0
+      ? 'No analytics or ad tracking found — you are flying blind.'
+      : `We found ${found} of 5 key tracking tags installed.`,
     details: t,
     checks: [
       { label: 'Google Analytics', ok: t.googleAnalytics, value: t.googleAnalytics ? 'Installed' : 'Missing' },
@@ -161,7 +164,9 @@ function catGbp(r) {
   score += Math.min(16, Math.round(photos / 2));
   return {
     score: Math.min(100, score),
-    summary: copy.gbpSummary(c.verified, c.verified ? 'active' : 'unverified'),
+    summary: c.verified
+      ? 'Your Google Business Profile is claimed, with room to fill it out.'
+      : 'Your Google Business Profile appears unverified — a major visibility gap.',
     details: c,
     checks: [
       { label: 'Profile verified', ok: c.verified, value: c.verified ? 'Yes' : 'No' },
@@ -188,7 +193,7 @@ function catDirectory(r, business) {
   const score = Math.round(avgAcc * 0.6 + (listedCount / dirs.length) * 40);
   return {
     score: Math.min(100, score),
-    summary: copy.directorySummary(listedCount, dirs.length, avgAcc),
+    summary: `Listed on ${listedCount} of ${dirs.length} major platforms, ${avgAcc}% name/phone/address accuracy.`,
     details: { directories: dirs, accuracy: avgAcc },
     checks: dirs.map((d) => ({
       label: d.name,
@@ -216,7 +221,7 @@ function catReputation(r, business) {
   score += Math.round(replyRate * 0.2);
   return {
     score: Math.min(100, score),
-    summary: copy.reputationSummary(rating, count),
+    summary: `${rating.toFixed(1)}★ across ${count} Google reviews, ${replyRate}% of reviews get a reply.`,
     details: { rating, count, replyRate, distribution: dist, samples, source: 'Google (up to 5 most recent shown)' },
     checks: [
       { label: 'Average rating', ok: rating >= 4.3, value: rating.toFixed(1) + '★' },
@@ -236,7 +241,7 @@ function catPerformance(r) {
   const pass = (m, good, ok) => (m <= good ? 'good' : m <= ok ? 'warn' : 'bad');
   return {
     score,
-    summary: copy.performanceSummary(mobile),
+    summary: `Mobile PageSpeed ${mobile}/100, desktop ${desktop}/100.`,
     details: {
       mobileScore: mobile, desktopScore: desktop,
       lcp, cls, inp,
@@ -268,7 +273,9 @@ function catSpeedToLead(r, business) {
   if (hasBookingForm) score += 25;
   return {
     score: Math.min(100, score),
-    summary: copy.speedToLeadSummary(afterHoursPath),
+    summary: afterHoursPath
+      ? 'You have at least one after-hours path, but a missed call still goes unanswered.'
+      : 'Right now, a missed call after hours just goes to voicemail — and the next name down.',
     details: {
       phoneTypeEstimate: phoneType,
       estimated: true,
@@ -307,7 +314,7 @@ function catCompetitors(r, business) {
   const score = Math.round(Math.max(10, 100 - (rank - 1) * (90 / comps.length)));
   return {
     score,
-    summary: copy.competitorsSummary(rank, comps.length, business.trade, top),
+    summary: `You rank #${rank} of ${comps.length} nearby ${business.trade} crews by reviews and rating.`,
     details: {
       rank, total: comps.length,
       leaderboard: ranked.map((c) => ({ name: c.name, reviews: c.reviews, rating: c.rating.toFixed(1), you: !!c.you })),

@@ -7,8 +7,6 @@
    count is read from the array, not hardcoded, so the list can grow/shrink
    without touching the scoring math. */
 
-const { directorySummary } = require('./copy');
-
 function patchDirectoryRow(priorDetails, name, rowPatch) {
   const dirs = (priorDetails.directories || []).map((d) => (d.name === name ? Object.assign({}, d, rowPatch) : d));
   const listedCount = dirs.filter((d) => d.listed).length;
@@ -32,7 +30,7 @@ function buildSummary(dirs, listedCount, avgAcc) {
   let suffix = '';
   if (liveNames.length && mockNames.length) suffix = ` ${liveNames.join('/')} confirmed live; ${mockNames.join('/')} estimated.`;
   else if (liveNames.length) suffix = ` ${liveNames.join('/')} confirmed live.`;
-  return `${directorySummary(listedCount, dirs.length, avgAcc)}${suffix}`;
+  return `Listed on ${listedCount} of ${dirs.length} major platforms, ${avgAcc}% name/phone/address accuracy.${suffix}`;
 }
 
 module.exports = { patchDirectoryRow };

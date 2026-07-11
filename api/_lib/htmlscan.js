@@ -8,7 +8,6 @@
    straight into the pipeline via finalizeCategory, same as the PageSpeed adapter. */
 
 const { ensureHttp } = require('./util');
-const copy = require('./copy');
 
 const TIMEOUT_MS = 10000;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 GoldenToolboxCheckup/1.0';
@@ -97,7 +96,9 @@ function buildTechnoStack(html) {
   const score = Math.round((found / 5) * 100);
   return {
     score,
-    summary: copy.technoStackSummary(found, 5),
+    summary: found === 0
+      ? 'No analytics or ad tracking found on your live site — you are flying blind.'
+      : `We found ${found} of 5 key tracking tags installed on your live site.`,
     details: Object.assign({}, t, { source: 'Live HTML scan' }),
     checks: [
       { label: 'Google Analytics', ok: t.googleAnalytics, value: t.googleAnalytics ? 'Installed' : 'Missing' },
@@ -124,7 +125,9 @@ function buildBusinessDetails(html) {
   if (blog.found) score += 20;
   return {
     score: Math.min(100, score),
-    summary: copy.businessDetailsSummary(chat.found, chat.provider),
+    summary: chat.found
+      ? `We detected a ${chat.provider} chat widget on your live site.`
+      : 'No live chat or instant-answer widget detected on your live site.',
     details: {
       chatWidget: chat.found,
       chatProvider: chat.provider,
