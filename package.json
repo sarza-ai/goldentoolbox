@@ -1,0 +1,9 @@
+{
+  "name": "goldentoolbox",
+  "private": true,
+  "version": "1.0.0",
+  "description": "goldentoolbox.com — static marketing site + Business Checkup serverless API",
+  "dependencies": {
+    "libphonenumber-js": "^1.11.0"
+  }
+}

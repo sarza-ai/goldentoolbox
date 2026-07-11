@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Free Business Checkup — Golden Toolbox</title>
+<meta name="description" content="Get a free, thorough Business Checkup: your Google reviews, website speed, Google profile, directories, and what happens when you miss a call — scored and explained in plain English." />
+<link rel="canonical" href="https://goldentoolbox.com/checkup" />
+<meta name="robots" content="index, follow" />
+<meta name="theme-color" content="#F6EFE3" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Golden Toolbox" />
+<meta property="og:title" content="Free Business Checkup — Golden Toolbox" />
+<meta property="og:description" content="See exactly where your business is losing jobs online. Free, thorough, yours to keep." />
+<meta property="og:url" content="https://goldentoolbox.com/checkup" />
+<meta property="og:image" content="https://goldentoolbox.com/assets/og.png" />
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/styles.css?v=12" />
+<link rel="stylesheet" href="/checkup.css?v=1" />
+</head>
+<body>
+
+<header class="site-header" id="site-header">
+  <a href="/" class="brand" aria-label="Golden Toolbox home">
+    <svg class="brand-mark" viewBox="0 0 64 52" width="34" height="28" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="gt-gold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#EFCB68"/><stop offset=".55" stop-color="#C9962B"/><stop offset="1" stop-color="#9A6E1B"/>
+      </linearGradient></defs>
+      <path d="M22 12 v-4 a4 4 0 0 1 4 -4 h12 a4 4 0 0 1 4 4 v4" fill="none" stroke="url(#gt-gold)" stroke-width="4.5" stroke-linecap="round"/>
+      <rect x="4" y="12" width="56" height="34" rx="5" fill="url(#gt-gold)"/>
+      <rect x="4" y="25" width="56" height="3" fill="#7C5715" opacity="0.55"/>
+      <rect x="27" y="21.5" width="10" height="9" rx="2" fill="#F6EFE3"/>
+    </svg>
+    <span>Golden Toolbox</span>
+  </a>
+  <a href="/" class="btn btn-line header-cta">Back to site</a>
+</header>
+
+<main id="main">
+  <section class="section checkup-intro">
+    <p class="eyebrow"><span class="fl"></span>The Business Checkup<span class="fl"></span></p>
+    <h1>See what your business <em>is missing.</em></h1>
+    <p class="checkup-lead">Tell us your business and website. In under a minute we'll pull together a free, thorough report — your Google reviews, your site speed, your Google profile, your directories, and what happens when someone calls and you don't pick up. Plain English. Yours to keep.</p>
+
+    <!-- STEP 1: FORM -->
+    <form id="checkup-form" class="checkup-card" novalidate>
+      <div class="form-row">
+        <div class="field">
+          <label for="name">Your name</label>
+          <input type="text" id="name" name="name" placeholder="Sam" autocomplete="name" required />
+        </div>
+        <div class="field">
+          <label for="business">Business name</label>
+          <input type="text" id="business" name="business" placeholder="Sam's Concrete" autocomplete="organization" required />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="sam@samsconcrete.com" autocomplete="email" required />
+        </div>
+        <div class="field">
+          <label for="phone">Business phone</label>
+          <input type="tel" id="phone" name="phone" placeholder="(303) 555-0142" autocomplete="tel" required />
+        </div>
+      </div>
+      <div class="field">
+        <label for="website">Website</label>
+        <input type="url" id="website" name="website" placeholder="samsconcrete.com" autocomplete="url" inputmode="url" required />
+      </div>
+      <!-- honeypot: real users never fill this -->
+      <div class="hp" aria-hidden="true"><label>Do not fill<input type="text" name="website_confirm" tabindex="-1" autocomplete="off" /></label></div>
+
+      <p class="form-reassure"><span>No address needed</span><span>No contract</span><span>Free to keep</span></p>
+      <button type="submit" class="btn btn-gold btn-wide" id="cta-btn">Run my free Business Checkup</button>
+      <p class="form-note" id="form-note">We use your website and business name to look you up. We never share your info.</p>
+    </form>
+
+    <!-- STEP 2: CONFIRM BUSINESS (hidden until needed) -->
+    <div class="checkup-card confirm-step" id="confirm-step" hidden>
+      <p class="eyebrow small"><span class="fl"></span>Quick check<span class="fl"></span></p>
+      <h2 class="confirm-title">Which one is you?</h2>
+      <p class="confirm-sub">We found a few possible matches. Pick yours so the report is about the right business.</p>
+      <div class="candidate-list" id="candidate-list" role="radiogroup" aria-label="Choose your business"></div>
+      <button type="button" class="btn btn-gold btn-wide" id="confirm-btn" disabled>This is my business — build my report</button>
+      <button type="button" class="btn btn-line btn-wide confirm-back" id="confirm-back">Go back</button>
+    </div>
+  </section>
+</main>
+
+<!-- LOADING OVERLAY -->
+<div class="load-overlay" id="load-overlay" hidden>
+  <div class="load-inner">
+    <div class="load-box">
+      <svg viewBox="0 0 64 52" width="64" height="52" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="lb-gold" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#EFCB68"/><stop offset=".55" stop-color="#C9962B"/><stop offset="1" stop-color="#9A6E1B"/>
+        </linearGradient></defs>
+        <path d="M22 12 v-4 a4 4 0 0 1 4 -4 h12 a4 4 0 0 1 4 4 v4" fill="none" stroke="url(#lb-gold)" stroke-width="4.5" stroke-linecap="round"/>
+        <rect x="4" y="12" width="56" height="34" rx="5" fill="url(#lb-gold)"/>
+        <rect x="4" y="25" width="56" height="3" fill="#7C5715" opacity="0.55"/>
+        <rect x="27" y="21.5" width="10" height="9" rx="2" fill="#F6EFE3"/>
+      </svg>
+    </div>
+    <h2 class="load-title">Building your Business Checkup…</h2>
+    <p class="load-step" id="load-step">Looking up your business</p>
+    <div class="loading-bar"><span></span></div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="foot-rule" aria-hidden="true"><span>✦</span></div>
+  <p class="foot-brand">Golden Toolbox</p>
+  <p class="foot-line">More customers. Fewer headaches. Built for local trades across the US.</p>
+  <p class="foot-copy">© 2026 Golden Toolbox. All rights reserved.</p>
+</footer>
+
+<script src="/checkup-form.js?v=1" defer></script>
+</body>
+</html>

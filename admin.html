@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Business Checkup — Admin | Golden Toolbox</title>
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#F6EFE3" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/styles.css?v=12" />
+<link rel="stylesheet" href="/checkup.css?v=1" />
+</head>
+<body>
+
+<header class="site-header" id="site-header">
+  <a href="/" class="brand" aria-label="Golden Toolbox home">
+    <svg class="brand-mark" viewBox="0 0 64 52" width="34" height="28" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="gt-gold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#EFCB68"/><stop offset=".55" stop-color="#C9962B"/><stop offset="1" stop-color="#9A6E1B"/>
+      </linearGradient></defs>
+      <path d="M22 12 v-4 a4 4 0 0 1 4 -4 h12 a4 4 0 0 1 4 4 v4" fill="none" stroke="url(#gt-gold)" stroke-width="4.5" stroke-linecap="round"/>
+      <rect x="4" y="12" width="56" height="34" rx="5" fill="url(#gt-gold)"/>
+      <rect x="4" y="25" width="56" height="3" fill="#7C5715" opacity="0.55"/>
+      <rect x="27" y="21.5" width="10" height="9" rx="2" fill="#F6EFE3"/>
+    </svg>
+    <span>Golden Toolbox</span>
+  </a>
+  <button type="button" class="btn btn-line header-cta" id="lock-btn" hidden>Lock</button>
+</header>
+
+<main id="main">
+  <section class="section checkup-intro admin-section">
+    <p class="eyebrow"><span class="fl"></span>Admin<span class="fl"></span></p>
+    <h1>Business Checkup <em>admin trigger.</em></h1>
+    <p class="checkup-lead">Generate a report on the spot before or during a call. Not indexed, not linked from the site.</p>
+
+    <!-- GATE -->
+    <form class="checkup-card" id="gate-form">
+      <div class="field">
+        <label for="secret">Admin password</label>
+        <input type="password" id="secret" name="secret" placeholder="••••••••" autocomplete="current-password" required />
+      </div>
+      <button type="submit" class="btn btn-gold btn-wide">Unlock</button>
+      <p class="form-note" id="gate-note">Stored only in this browser, sent only to this site's own API.</p>
+    </form>
+
+    <!-- ADMIN TOOL -->
+    <form class="checkup-card" id="admin-form" hidden>
+      <div class="form-row">
+        <div class="field">
+          <label for="a-business">Business name</label>
+          <input type="text" id="a-business" name="business" placeholder="Sam's Concrete" required />
+        </div>
+        <div class="field">
+          <label for="a-website">Website</label>
+          <input type="text" id="a-website" name="website" placeholder="samsconcrete.com" required />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="a-phone">Phone <span class="opt">(optional)</span></label>
+          <input type="tel" id="a-phone" name="phone" placeholder="(303) 555-0142" />
+        </div>
+        <div class="field">
+          <label for="a-email">Email <span class="opt">(optional)</span></label>
+          <input type="email" id="a-email" name="email" placeholder="lead@example.com" />
+        </div>
+      </div>
+
+      <div class="admin-yelp">
+        <label class="admin-check">
+          <input type="checkbox" id="a-yelp-listed" />
+          <span>I checked their Yelp page — let me fill it in by hand</span>
+        </label>
+        <div class="admin-yelp-fields" id="a-yelp-fields" hidden>
+          <label class="admin-check"><input type="checkbox" id="a-yelp-name" checked /><span>Name matches</span></label>
+          <label class="admin-check"><input type="checkbox" id="a-yelp-phone" /><span>Phone matches</span></label>
+          <label class="admin-check"><input type="checkbox" id="a-yelp-addr" /><span>Address matches</span></label>
+        </div>
+      </div>
+
+      <label class="admin-check admin-fresh">
+        <input type="checkbox" id="a-fresh" />
+        <span>Force a fresh report (ignore the 30-day cache)</span>
+      </label>
+
+      <button type="submit" class="btn btn-gold btn-wide" id="a-submit">Generate report</button>
+      <p class="form-note" id="a-note">Skips the public form, rate limits, and lead-notify email.</p>
+    </form>
+
+    <!-- RESULT -->
+    <div class="checkup-card admin-result" id="a-result" hidden>
+      <p class="eyebrow small"><span class="fl"></span><span id="a-result-tag">Ready</span><span class="fl"></span></p>
+      <h2 class="confirm-title" id="a-result-title">Report ready</h2>
+      <p class="confirm-sub" id="a-result-sub"></p>
+      <a class="btn btn-gold btn-wide" id="a-result-link" href="#" target="_blank" rel="noopener">Open report</a>
+      <button type="button" class="btn btn-line btn-wide" id="a-result-copy">Copy link</button>
+      <button type="button" class="btn btn-line btn-wide" id="a-result-again">Generate another</button>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="foot-rule" aria-hidden="true"><span>✦</span></div>
+  <p class="foot-brand">Golden Toolbox</p>
+  <p class="foot-copy">Internal tool. © 2026 Golden Toolbox.</p>
+</footer>
+
+<script src="/admin.js?v=1" defer></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Secrets — never commit these
+.env
+.env.local
+.env.*.local
+
+# Dependencies (added when real API libs land)
+node_modules/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.log
+.vercel

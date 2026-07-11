@@ -1,6 +1,12 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "rewrites": [
+    { "source": "/checkup/:slug", "destination": "/api/checkup?slug=:slug" }
+  ],
+  "functions": {
+    "api/*.js": { "maxDuration": 60 }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -18,9 +24,15 @@
       ]
     },
     {
-      "source": "/(styles.css|app.js)",
+      "source": "/(styles.css|app.js|checkup.css|checkup-form.js|admin.js)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=3600, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/admin",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
       ]
     }
   ]

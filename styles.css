@@ -474,6 +474,11 @@ details[open] summary::after { content: "−"; }
 .foot-rule::before, .foot-rule::after { content: ""; width: 60px; height: 1px; background: var(--gold); }
 .foot-brand { font-family: var(--disp); font-weight: 900; font-size: 21px; }
 .foot-line { color: var(--muted); font-size: 14px; margin-top: 4px; }
+.foot-contact {
+  display: inline-block; margin-top: 14px; font-size: 13px; font-weight: 600;
+  color: var(--gold-lo); border-bottom: 1px solid transparent; transition: border-color 0.2s;
+}
+.foot-contact:hover { border-color: var(--gold-lo); }
 .foot-copy { color: var(--muted); font-size: 12px; margin-top: 1.6rem; opacity: 0.8; }
 
 /* ---------- paper warmth ---------- */

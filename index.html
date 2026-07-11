@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/styles.css?v=11" />
+<link rel="stylesheet" href="/styles.css?v=12" />
 
 <!-- Structured data -->
 <script type="application/ld+json">
@@ -122,7 +122,7 @@
         {
           "@type": "Question",
           "name": "What is the free Business Checkup?",
-          "acceptedAnswer": { "@type": "Answer", "text": "A fifteen-minute review of your Google reviews, your website, and what happens when you miss a call. We reply within one business day with what we found, in plain English, and the findings are yours to keep." }
+          "acceptedAnswer": { "@type": "Answer", "text": "An instant, free online report on your Google reviews, your website speed, your Google Business Profile, and what happens when you miss a call. Fill out one short form and get your full report right away, in plain English, and the findings are yours to keep." }
         }
       ]
     }
@@ -148,7 +148,7 @@
     </svg>
     <span>Golden Toolbox</span>
   </a>
-  <a href="#contact" class="btn btn-ink header-cta">Free Business Checkup</a>
+  <a href="/checkup" class="btn btn-ink header-cta">Free Business Checkup</a>
 </header>
 
 <main id="main">
@@ -194,7 +194,7 @@
     </span>
 
     <!-- spinning sticker badge -->
-    <a class="badge-spin" href="#contact" aria-label="Get your free Business Checkup">
+    <a class="badge-spin" href="/checkup" aria-label="Get your free Business Checkup">
       <svg viewBox="0 0 120 120" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <path id="badge-circ" d="M60,60 m-45,0 a45,45 0 1,1 90,0 a45,45 0 1,1 -90,0"/>
@@ -217,7 +217,7 @@
     <h1>Open it up.<br /><em>Watch the phone ring.</em></h1>
     <p class="hero-sub">We help local contractors get found online, collect more five star reviews, answer every lead, and automate the follow up, without adding one more thing to your day. You do the work. We make sure the town knows about it.</p>
     <div class="hero-ctas">
-      <a href="#contact" class="btn btn-gold">Get my free Business Checkup</a>
+      <a href="/checkup" class="btn btn-gold">Get my free Business Checkup</a>
       <a href="#tools" class="btn btn-line">See the tools</a>
     </div>
     <ul class="assure" aria-label="What you can count on">
@@ -421,7 +421,7 @@
       <div class="step reveal">
         <span class="step-num">1</span>
         <h3>Get your Business Checkup</h3>
-        <p>We check your reviews, your website, and what happens when you miss a call. Fifteen minutes, plain English, no pressure.</p>
+        <p>One short form. We check your reviews, your website, your Google profile, and what happens when you miss a call, then hand you the full report instantly. Plain English, no pressure.</p>
       </div>
       <div class="step reveal">
         <span class="step-num">2</span>
@@ -463,7 +463,7 @@
       </details>
       <details>
         <summary>What is the free Business Checkup?</summary>
-        <p>A fifteen-minute review of your Google reviews, your website, and what happens when you miss a call. We reply within one business day with what we found, in plain English, and the findings are yours to keep.</p>
+        <p>An instant, free online report on your Google reviews, your website speed, your Google Business Profile, and what happens when you miss a call. Fill out one short form and get your full report right away, in plain English, and the findings are yours to keep.</p>
       </details>
     </div>
   </section>
@@ -496,39 +496,6 @@
     <p>We handle your digital presence.<br /><em>So you can focus on what really matters.</em></p>
   </section>
 
-  <!-- CONTACT -->
-  <section class="section contact" id="contact">
-    <p class="eyebrow"><span class="fl"></span>The Business Checkup<span class="fl"></span></p>
-    <h2>See what your business <em>is missing.</em></h2>
-    <p class="contact-sub">The Business Checkup is a free review of your Google reviews, your website, and what happens when you miss a call. We reply within one business day with what we found, and the findings are yours to keep whether you hire us or not.</p>
-    <form id="contact-form" action="https://formspree.io/f/mgojwopl" method="POST">
-      <input type="hidden" name="_subject" value="Golden Toolbox inquiry" />
-      <div class="form-row">
-        <div class="field">
-          <label for="name">Your name</label>
-          <input type="text" id="name" name="Name" placeholder="Sam" autocomplete="name" required />
-        </div>
-        <div class="field">
-          <label for="biz">Business name</label>
-          <input type="text" id="biz" name="Business" placeholder="Sam's Concrete" autocomplete="organization" required />
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="field">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" placeholder="sam@samsconcrete.com" autocomplete="email" required />
-        </div>
-        <div class="field">
-          <label for="phone">Phone <span class="opt">(optional)</span></label>
-          <input type="tel" id="phone" name="Phone" placeholder="So we can text you the results" autocomplete="tel" />
-        </div>
-      </div>
-      <p class="form-reassure"><span>No contract</span><span>No spam</span><span>Reply within one business day</span></p>
-      <button type="submit" class="btn btn-gold btn-wide" id="submit-btn">Book my free Business Checkup</button>
-      <p class="form-note" id="form-note">We never share your info, and there is nothing to unsubscribe from.</p>
-    </form>
-  </section>
-
 </main>
 
 <!-- FOOTER -->
@@ -536,12 +503,13 @@
   <div class="foot-rule" aria-hidden="true"><span>✦</span></div>
   <p class="foot-brand">Golden Toolbox</p>
   <p class="foot-line">More customers. Fewer headaches. Built for local trades across the US.</p>
+  <a href="mailto:hello@goldentoolbox.com" class="foot-contact">Email us</a>
   <p class="foot-copy">© 2026 Golden Toolbox. All rights reserved.</p>
 </footer>
 
-<script src="/app.js?v=6" defer></script>
+<script src="/app.js?v=7" defer></script>
 <div class="mobile-cta">
-  <a href="#contact" class="btn btn-gold">Free Business Checkup</a>
+  <a href="/checkup" class="btn btn-gold">Free Business Checkup</a>
 </div>
 </body>
 </html>

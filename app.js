@@ -1,4 +1,4 @@
-/* Golden Toolbox — reveal on scroll + contact form */
+/* Golden Toolbox — reveal on scroll + interaction polish */
 (function () {
   // reveal
   var items = document.querySelectorAll('.reveal');
@@ -60,32 +60,4 @@
       });
     });
   }
-
-  // contact form
-  var form = document.getElementById('contact-form');
-  var btn = document.getElementById('submit-btn');
-  var note = document.getElementById('form-note');
-  if (!form) return;
-
-  form.addEventListener('submit', function (ev) {
-    ev.preventDefault();
-    btn.disabled = true;
-    btn.textContent = 'Sending…';
-    fetch(form.action, {
-      method: 'POST',
-      body: new FormData(form),
-      headers: { 'Accept': 'application/json' }
-    }).then(function (r) {
-      if (!r.ok) throw new Error('bad status');
-      form.reset();
-      btn.textContent = 'Sent. Talk soon.';
-      note.textContent = 'Got it. We will take a look and reply within one business day.';
-      note.className = 'form-note ok';
-    }).catch(function () {
-      btn.disabled = false;
-      btn.textContent = 'Book my free Business Checkup';
-      note.textContent = 'Something went wrong. Email us at hello@goldentoolbox.com and we will get right back to you.';
-      note.className = 'form-note err';
-    });
-  });
 })();
