@@ -18,17 +18,14 @@
 const { buildReportMock, finalizeCategory } = require('./mock');
 const { CATEGORIES, rollup, grade } = require('./config');
 const { runPerformance } = require('./pagespeed');
-const { fetchSiteHtml, buildTechnoStack, buildBusinessDetails, detectChat, detectFacebookLink } = require('./htmlscan');
+const {
+  fetchSiteHtml, buildTechnoStack, buildBusinessDetails, detectChat,
+  detectFacebookLink, detectXLink, detectNextdoorLink,
+} = require('./htmlscan');
 const { buildSpeedToLead } = require('./speedtolead');
 const { patchDirectoryRow } = require('./directory');
 const places = require('./places');
-const yelp = require('./yelp');
 const store = require('./store');
-// NOTE: Yelp's automated API path is dormant (free Fusion tier discontinued,
-// now $229+/mo, fails the zero-cost requirement). The live Yelp path is
-// manual-only, for admin-triggered sales-call prep — see opts.yelpManual
-// below. Public form submissions never set that option, so it can't be
-// triggered from the public funnel.
 
 const PLACES_DAILY_CAP = parseInt(process.env.PLACES_DAILY_CAP || '300', 10);
 
@@ -131,15 +128,22 @@ async function runPipeline(business, opts = {}) {
       (c.category === 'techno-stack' || c.category === 'business-details')
         ? Object.assign({}, c, { live: true }) : c);
 
-    // Meta locked down free business search, so instead of searching we check
-    // whether the business already links its own Facebook page from its own
-    // site — a link they placed themselves is strong evidence either way.
-    const fbLink = detectFacebookLink(htmlResult.html);
-    const priorDirForFb = report.categories.find((c) => c.id === 'directory').details;
-    const fbPatch = fbLink.found
-      ? patchDirectoryRow(priorDirForFb, 'Facebook', { listed: true, accuracy: 70, live: true, displayValue: 'Listed (found on your site)' })
-      : patchDirectoryRow(priorDirForFb, 'Facebook', { listed: false, accuracy: 0, live: true, displayValue: 'Not linked from your site' });
-    replaceCategory(report, 'directory', fbPatch);
+    // None of Facebook/X/Nextdoor offer free public business search, so
+    // instead of searching we check whether the business already links its
+    // own page from its own site — a link they placed themselves is strong
+    // evidence either way. Same technique, three platforms, one HTML fetch.
+    const socialChecks = [
+      ['Facebook', detectFacebookLink(htmlResult.html)],
+      ['X', detectXLink(htmlResult.html)],
+      ['Nextdoor', detectNextdoorLink(htmlResult.html)],
+    ];
+    socialChecks.forEach(([platform, link]) => {
+      const priorDir = report.categories.find((c) => c.id === 'directory').details;
+      const patch = link.found
+        ? patchDirectoryRow(priorDir, platform, { listed: true, accuracy: 70, live: true, displayValue: 'Listed (found on your site)' })
+        : patchDirectoryRow(priorDir, platform, { listed: false, accuracy: 0, live: true, displayValue: 'Not linked from your site' });
+      replaceCategory(report, 'directory', patch);
+    });
     live.push('directory');
     report.apiCalls = report.apiCalls.map((c) =>
       c.category === 'directory' ? Object.assign({}, c, { live: true }) : c);
@@ -172,19 +176,6 @@ async function runPipeline(business, opts = {}) {
     report.apiCalls = report.apiCalls.map((c) =>
       ['gbp', 'reputation', 'directory', 'competitors'].includes(c.category)
         ? Object.assign({}, c, { live: true }) : c);
-  }
-
-  // #6c: Yelp, manual-only (admin sales-call prep). Zero API cost — nothing
-  // to add to apiCalls, just patches the row. Runs after Places/HTML-scan so
-  // a deliberate manual entry always wins over their automated counterparts.
-  if (opts.yelpManual) {
-    try {
-      const priorDirForYelp = report.categories.find((c) => c.id === 'directory').details;
-      replaceCategory(report, 'directory', yelp.buildManualPatch(priorDirForYelp, opts.yelpManual));
-      live.push('directory');
-    } catch (e) {
-      console.error('[pipeline] yelp manual patch failed:', e.message);
-    }
   }
 
   // #5: phone type estimate (offline, free, no network — always runs when a

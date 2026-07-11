@@ -21,9 +21,6 @@
   var resultCopy = document.getElementById('a-result-copy');
   var resultAgain = document.getElementById('a-result-again');
 
-  var yelpListed = document.getElementById('a-yelp-listed');
-  var yelpFields = document.getElementById('a-yelp-fields');
-
   function getSecret() { return localStorage.getItem(STORAGE_KEY) || ''; }
   function setSecret(s) { localStorage.setItem(STORAGE_KEY, s); }
   function clearSecret() { localStorage.removeItem(STORAGE_KEY); }
@@ -59,12 +56,6 @@
     showGate();
   });
 
-  yelpListed.addEventListener('change', function () {
-    yelpFields.hidden = !yelpListed.checked;
-  });
-
-  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-
   adminForm.addEventListener('submit', function (ev) {
     ev.preventDefault();
 
@@ -77,14 +68,6 @@
     if (!business || !website) return;
 
     var body = { business: business, website: website, phone: phone, email: email };
-    if (yelpListed.checked) {
-      body.yelp = {
-        listed: true,
-        nameMatch: document.getElementById('a-yelp-name').checked,
-        phoneMatch: document.getElementById('a-yelp-phone').checked,
-        addrMatch: document.getElementById('a-yelp-addr').checked,
-      };
-    }
 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Generating…';
@@ -143,7 +126,6 @@
 
   resultAgain.addEventListener('click', function () {
     adminForm.reset();
-    yelpFields.hidden = true;
     resultBox.hidden = true;
     adminForm.hidden = false;
   });

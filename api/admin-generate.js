@@ -1,14 +1,9 @@
 'use strict';
 /* POST /api/admin-generate   (authenticated — for Jared, live on sales calls)
    Header: x-admin-secret: <ADMIN_SECRET>   (or ?secret= for quick browser use)
-   Body:   { business, email, phone, website, yelp? }
+   Body:   { business, email, phone, website }
    Skips the public form + rate limiting, runs the pipeline, returns the report
-   URL. Not rate-limited, but still logged. Bypasses cache with ?fresh=1.
-
-   Optional `yelp` field lets you fill in the Yelp directory row by hand after
-   eyeballing the prospect's Yelp page — no API, no cost:
-     { "listed": true, "nameMatch": true, "phoneMatch": true, "addrMatch": false }
-   Omit entirely (or "listed": false) if you didn't check / they're not listed. */
+   URL. Not rate-limited, but still logged. Bypasses cache with ?fresh=1. */
 
 const { readBody, json, clientIp } = require('./_lib/http');
 const store = require('./_lib/store');
@@ -41,10 +36,7 @@ module.exports = async (req, res) => {
   const business = resolved.confident ? resolved.business : (resolved.candidates && resolved.candidates[0]);
   if (!business) return json(res, 422, { error: 'no_match', message: 'Could not find that business.' });
 
-  const yelpManual = body.yelp && typeof body.yelp === 'object' ? body.yelp : null;
-  // If you're deliberately typing in fresh Yelp data, you want it applied —
-  // not silently discarded in favor of a stale cached report.
-  const fresh = url.searchParams.get('fresh') === '1' || !!yelpManual;
+  const fresh = url.searchParams.get('fresh') === '1';
   if (!fresh) {
     const cachedSlug = await store.getCachedSlug(business);
     if (cachedSlug) {
@@ -54,7 +46,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const report = await runPipeline(business, { source: 'admin', yelpManual });
+    const report = await runPipeline(business, { source: 'admin' });
     await store.logGeneration({ slug: report.slug, admin: true, ip: clientIp(req), business: business.name });
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'goldentoolbox.com';
     return json(res, 200, { slug: report.slug, cached: false, url: `https://${host}/checkup/${report.slug}` });

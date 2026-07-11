@@ -38,7 +38,7 @@ const CATEGORIES = [
     label: 'Directory Presence',
     weight: 1,
     tools: ['visibility', 'reputation'],
-    blurb: 'Whether Google, Yelp, and Facebook agree on who you are.',
+    blurb: 'Whether Google, Facebook, Nextdoor, and X agree on who you are.',
   },
   {
     id: 'reputation',

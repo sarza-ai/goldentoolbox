@@ -92,11 +92,12 @@ function catBusinessDetails(r) {
   const hasChat = r.chance(0.35);
   const chatProvider = hasChat ? r.pick(CHAT_PROVIDERS) : null;
   const host = r.pick(HOSTS);
+  const hasBlog = r.chance(0.3);
   const replyRate = r.int(0, 85);
-  let score = 30;
-  if (hasChat) score += 30;
-  if (host !== 'Custom / Unknown') score += 12;
-  score += Math.round(replyRate * 0.3);
+  let score = 25;
+  if (hasChat) score += 35;
+  if (host !== 'Custom / Unknown') score += 20;
+  if (hasBlog) score += 20;
   return {
     score: Math.min(100, score),
     summary: hasChat
@@ -106,11 +107,13 @@ function catBusinessDetails(r) {
       chatWidget: hasChat,
       chatProvider,
       hostingPlatform: host,
+      hasBlog,
       reviewReplyRate: replyRate,
     },
     checks: [
       { label: 'Live chat / instant answers', ok: hasChat, value: hasChat ? chatProvider : 'Not found' },
       { label: 'Hosting platform detected', ok: host !== 'Custom / Unknown', value: host },
+      { label: 'Blog / content section', ok: hasBlog, value: hasBlog ? 'Found' : 'Not found' },
       { label: 'Review reply rate', ok: replyRate >= 50, value: replyRate + '%' },
     ],
   };
@@ -177,7 +180,7 @@ function catGbp(r) {
 }
 
 function catDirectory(r, business) {
-  const dirs = ['Google', 'Yelp', 'Facebook'].map((name) => {
+  const dirs = ['Google', 'Facebook', 'Nextdoor', 'X'].map((name) => {
     const listed = name === 'Google' ? true : r.chance(0.6);
     const nameMatch = listed ? r.chance(0.9) : false;
     const phoneMatch = listed ? r.chance(0.75) : false;
@@ -187,10 +190,10 @@ function catDirectory(r, business) {
   });
   const listedCount = dirs.filter((d) => d.listed).length;
   const avgAcc = Math.round(dirs.reduce((a, d) => a + d.accuracy, 0) / dirs.length);
-  const score = Math.round(avgAcc * 0.6 + (listedCount / 3) * 40);
+  const score = Math.round(avgAcc * 0.6 + (listedCount / dirs.length) * 40);
   return {
     score: Math.min(100, score),
-    summary: `Listed on ${listedCount} of 3 major directories, ${avgAcc}% name/phone/address accuracy.`,
+    summary: `Listed on ${listedCount} of ${dirs.length} major platforms, ${avgAcc}% name/phone/address accuracy.`,
     details: { directories: dirs, accuracy: avgAcc },
     checks: dirs.map((d) => ({
       label: d.name,
@@ -341,7 +344,7 @@ const MOCK_API_CALLS = {
   'business-details': [{ api: 'site-html-fetch', count: 1 }],
   'techno-stack': [{ api: 'site-html-fetch', count: 1 }],
   'gbp': [{ api: 'google-places-details', count: 1 }],
-  'directory': [{ api: 'google-places-details', count: 1 }, { api: 'facebook-graph', count: 1 }],
+  'directory': [{ api: 'google-places-details', count: 1 }, { api: 'site-html-fetch', count: 1 }],
   'reputation': [{ api: 'google-places-details', count: 1 }],
   'performance': [{ api: 'pagespeed-insights', count: 2 }],
   'speed-to-lead': [{ api: 'libphonenumber (offline)', count: 0 }],

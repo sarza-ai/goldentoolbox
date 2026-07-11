@@ -118,9 +118,11 @@ function buildTechnoStack(html) {
 function buildBusinessDetails(html) {
   const chat = detectChat(html);
   const host = detectHosting(html);
-  let score = 35;
-  if (chat.found) score += 40;
-  if (host !== 'Custom / Unknown') score += 25;
+  const blog = detectBlog(html);
+  let score = 25;
+  if (chat.found) score += 35;
+  if (host !== 'Custom / Unknown') score += 20;
+  if (blog.found) score += 20;
   return {
     score: Math.min(100, score),
     summary: chat.found
@@ -130,12 +132,14 @@ function buildBusinessDetails(html) {
       chatWidget: chat.found,
       chatProvider: chat.provider,
       hostingPlatform: host,
+      hasBlog: blog.found,
       reviewReplyRate: null,
-      source: 'Live HTML scan (chat + hosting); review reply rate is not exposed by any free data source',
+      source: 'Live HTML scan (chat + hosting + blog); review reply rate is not exposed by any free data source',
     },
     checks: [
       { label: 'Live chat / instant answers', ok: chat.found, value: chat.found ? chat.provider : 'Not found' },
       { label: 'Hosting platform detected', ok: host !== 'Custom / Unknown', value: host },
+      { label: 'Blog / content section', ok: blog.found, value: blog.found ? 'Found' : 'Not found' },
       { label: 'Review reply rate', ok: true, value: 'Not available' },
     ],
   };
@@ -161,4 +165,43 @@ function detectFacebookLink(html) {
   return { found: false };
 }
 
-module.exports = { fetchSiteHtml, detectChat, detectHosting, detectTracking, detectFacebookLink, buildTechnoStack, buildBusinessDetails };
+// X (formerly Twitter) — same self-link approach, same reasoning: no free
+// public search, but a link the business placed on their own site is strong
+// evidence either way.
+const X_LINK_BLOCKLIST = /^(intent|share|search|hashtag|home|i|compose|login|signup|widgets)/i;
+
+function detectXLink(html) {
+  if (!html) return { found: false };
+  const re = /https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/([A-Za-z0-9_]{1,30})/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    const handle = m[1].replace(/\/$/, '');
+    if (!X_LINK_BLOCKLIST.test(handle)) return { found: true, handle, url: 'https://x.com/' + handle };
+  }
+  return { found: false };
+}
+
+// Nextdoor business pages are usually linked as nextdoor.com/pages/{slug} —
+// the neighborhood-recommendation app that's arguably the highest-signal
+// platform for a local trades audience specifically.
+function detectNextdoorLink(html) {
+  if (!html) return { found: false };
+  const m = html.match(/https?:\/\/(?:www\.)?nextdoor\.com\/(?:pages|business)\/([A-Za-z0-9_-]{2,80})/i);
+  if (m) return { found: true, slug: m[1], url: 'https://nextdoor.com/pages/' + m[1] };
+  return { found: false };
+}
+
+// Blog / content section on the business's own site — same-origin path or
+// nav link, not an external platform, so it's a simpler presence check.
+const BLOG_PATTERN = /href=["'](?:https?:\/\/[^"'/]+)?\/(?:blog|news|articles|insights)(?:[/"']|\/[^"']*["'])/i;
+
+function detectBlog(html) {
+  if (!html) return { found: false };
+  return { found: BLOG_PATTERN.test(html) };
+}
+
+module.exports = {
+  fetchSiteHtml, detectChat, detectHosting, detectTracking,
+  detectFacebookLink, detectXLink, detectNextdoorLink, detectBlog,
+  buildTechnoStack, buildBusinessDetails,
+};
