@@ -4,7 +4,7 @@
    business always renders the same report. Each function is a stand-in for a
    real adapter (Places, PageSpeed, HTML scan) wired in later priorities. */
 
-const { rng, normalizeDomain, titleCase } = require('./util');
+const { rng, normalizeDomain, titleCase, rankByRating } = require('./util');
 const { CATEGORIES, grade, rollup, framingFor } = require('./config');
 
 const TRADES = [
@@ -305,16 +305,16 @@ function catCompetitors(r, business) {
     });
   }
   comps.push({ name: business.name + ' (You)', reviews: youReviews, rating: youRating, you: true });
-  comps.sort((a, b) => (b.rating * 20 + b.reviews) - (a.rating * 20 + a.reviews));
-  const rank = comps.findIndex((c) => c.you) + 1;
-  const top = comps[0];
+  const ranked = rankByRating(comps, (c) => c.rating, (c) => c.reviews);
+  const rank = ranked.findIndex((c) => c.you) + 1;
+  const top = ranked[0];
   const score = Math.round(Math.max(10, 100 - (rank - 1) * (90 / comps.length)));
   return {
     score,
     summary: `You rank #${rank} of ${comps.length} nearby ${business.trade} crews by reviews and rating.`,
     details: {
       rank, total: comps.length,
-      leaderboard: comps.map((c) => ({ name: c.name, reviews: c.reviews, rating: c.rating.toFixed(1), you: !!c.you })),
+      leaderboard: ranked.map((c) => ({ name: c.name, reviews: c.reviews, rating: c.rating.toFixed(1), you: !!c.you })),
       top: { name: top.name, reviews: top.reviews, rating: top.rating.toFixed(1) },
     },
     checks: [

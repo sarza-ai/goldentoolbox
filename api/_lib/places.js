@@ -5,7 +5,7 @@
    no OAuth. Feeds: address resolution, GBP, Online Reputation, the Google row
    of Directory Presence, and the Local Competitor Snapshot. */
 
-const { normalizeDomain } = require('./util');
+const { normalizeDomain, rankByRating } = require('./util');
 const { guessTrade } = require('./mock');
 const { patchDirectoryRow } = require('./directory');
 
@@ -140,28 +140,30 @@ function buildGbp(details) {
   };
 }
 
-// Places has no public "owner replied" signal — reply rate stays the estimate
-// already computed by the mock baseline; everything else here is live.
-function buildReputation(details, priorReplyRate) {
+// Places has no public "owner replied" signal at all — not even a sample.
+// Earlier this carried the mock baseline's reply-rate number through
+// unchanged, which meant a fabricated percentage could sit right next to
+// real reviews that visibly contradicted it. Don't claim a number we can't
+// back up: say plainly that it isn't available, and don't penalize or credit
+// the score for something we didn't actually measure.
+function buildReputation(details) {
   const rating = details.rating || 0;
   const count = details.user_ratings_total || 0;
   const samples = (details.reviews || []).slice(0, 5).map((r) => ({
-    author: r.author_name, rating: r.rating, text: r.text, reply: false,
+    author: r.author_name, rating: r.rating, text: r.text, reply: null, // null = unknown, not "confirmed no reply"
   }));
-  let score = Math.round((rating / 5) * 55);
-  score += Math.min(25, Math.round(count / 4));
-  score += Math.round(priorReplyRate * 0.2);
+  const score = Math.round((rating / 5) * 70) + Math.min(30, Math.round(count / 3.33));
   return {
     score: Math.min(100, score),
     summary: `${rating.toFixed(1)}★ across ${count} Google reviews (live).`,
     details: {
-      rating, count, replyRate: priorReplyRate, distribution: null, samples,
-      source: 'Google Places (live) — up to 5 most recent reviews shown; reply rate estimated (not exposed by the API)',
+      rating, count, replyRate: null, distribution: null, samples,
+      source: 'Google Places (live) — up to 5 most recent reviews shown; reply data is not exposed by the API',
     },
     checks: [
       { label: 'Average rating', ok: rating >= 4.3, value: rating.toFixed(1) + '★' },
       { label: 'Review volume', ok: count >= 40, value: count + ' reviews' },
-      { label: 'Owner reply rate (estimated)', ok: priorReplyRate >= 50, value: priorReplyRate + '%' },
+      { label: 'Owner reply rate', ok: true, value: 'Not available (Google doesn\'t expose this)' },
     ],
   };
 }
@@ -184,16 +186,16 @@ function buildCompetitors(results, business, details) {
     .filter((r) => r.place_id !== business.placeId)
     .map((r) => ({ name: r.name, reviews: r.user_ratings_total || 0, rating: r.rating || 0, you: false }));
   comps.push({ name: business.name + ' (You)', reviews: details.user_ratings_total || 0, rating: details.rating || 0, you: true });
-  comps.sort((a, b) => (b.rating * 20 + b.reviews) - (a.rating * 20 + a.reviews));
-  const rank = comps.findIndex((c) => c.you) + 1;
-  const top = comps[0];
+  const ranked = rankByRating(comps, (c) => c.rating, (c) => c.reviews);
+  const rank = ranked.findIndex((c) => c.you) + 1;
+  const top = ranked[0];
   const score = Math.round(Math.max(10, 100 - (rank - 1) * (90 / comps.length)));
   return {
     score,
     summary: `You rank #${rank} of ${comps.length} nearby ${business.trade || 'local'} businesses by reviews and rating (live).`,
     details: {
       rank, total: comps.length,
-      leaderboard: comps.map((c) => ({ name: c.name, reviews: c.reviews, rating: c.rating.toFixed(1), you: !!c.you })),
+      leaderboard: ranked.map((c) => ({ name: c.name, reviews: c.reviews, rating: c.rating.toFixed(1), you: !!c.you })),
       top: { name: top.name, reviews: top.reviews, rating: top.rating.toFixed(1) },
       source: 'Google Places Text Search (live)',
     },

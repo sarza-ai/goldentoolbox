@@ -102,9 +102,32 @@ function titleCase(str) {
   return String(str || '').replace(/(^|\s)([a-z])/g, (m, pre, c) => pre + c.toUpperCase());
 }
 
+// Rank businesses by rating with review count as a confidence weight, not a
+// raw additive bonus — same idea as IMDb's "weighted rating". A handful of
+// reviews shouldn't let a perfect score dominate, but a mountain of reviews
+// also shouldn't let a mediocre rating outrank genuinely well-rated
+// competitors just by sheer volume (the old `rating*20 + reviews` formula
+// let review count swamp rating once a business crossed ~150 reviews).
+// priorWeight = how many reviews' worth of trust an unproven rating gets;
+// priorMean defaults to the sample's own average so it adapts per search
+// rather than assuming a fixed "4.0 is average" across every trade/market.
+function weightedRating(rating, reviews, priorMean, priorWeight = 10) {
+  const r = Number(rating) || 0;
+  const n = Number(reviews) || 0;
+  return (n * r + priorWeight * priorMean) / (n + priorWeight);
+}
+
+function rankByRating(items, getRating, getReviews) {
+  const ratings = items.map(getRating).filter((r) => r > 0);
+  const priorMean = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 4.0;
+  const score = (item) => weightedRating(getRating(item), getReviews(item), priorMean);
+  return items.slice().sort((a, b) => score(b) - score(a));
+}
+
 module.exports = {
   hashStr, mulberry32, rng,
   normalizeDomain, ensureHttp,
   slugify, b64urlEncode, b64urlDecode, encodeSlug, decodeSlug, SLUG_SEP,
   clamp, escapeHtml, titleCase,
+  weightedRating, rankByRating,
 };

@@ -38,15 +38,22 @@ const LIVE_LABELS = {
   'speed-to-lead': 'Speed-to-Lead', competitors: 'Local Competitor Snapshot',
 };
 
+// Some figures are inherently estimates even on a fully-live report — phone
+// type is pattern-based (not carrier-verified), review reply rate is modeled
+// (no public API exposes it), and Facebook presence is checked via a site's
+// own links rather than a full search. This note always shows, regardless of
+// how many categories are live vs mock, on top of the live/mock breakdown.
+const ESTIMATE_NOTE = "Some figures — like phone type, review reply rate, and Facebook presence — are best-effort estimates, not verified facts. Scores reflect Golden Toolbox's own methodology, not an independent audit.";
+
 function disclaimer(report) {
   const live = report.liveSources || [];
-  if (live.length === 0) return 'Sample report — figures are illustrative until live data sources are connected. ';
+  if (live.length === 0) return 'Sample report — figures are illustrative until live data sources are connected. ' + ESTIMATE_NOTE + ' ';
   if (report.mock) {
     const names = live.map((id) => LIVE_LABELS[id] || id);
     const list = names.length === 1 ? names[0] : names.slice(0, -1).join(', ') + ' and ' + names.slice(-1);
-    return `${list} use live data; the remaining figures are illustrative until their data sources are connected. `;
+    return `${list} use live data; the remaining figures are illustrative until their data sources are connected. ${ESTIMATE_NOTE} `;
   }
-  return '';
+  return ESTIMATE_NOTE + ' ';
 }
 
 function bandOf(score) {
@@ -87,12 +94,18 @@ function reputationExtra(d) {
     const pct = d.distribution[s] || 0;
     return `<div class="dist-row"><span class="dist-star">${s}★</span>${bar(pct)}<span class="dist-pct">${pct}%</span></div>`;
   }).join('') : '';
-  const samples = (d.samples || []).map((s) => `
+  const samples = (d.samples || []).map((s) => {
+    // s.reply: true = replied, false = confirmed no reply (mock only — Google
+    // never exposes this for real), null/undefined = unknown, say nothing
+    // rather than falsely claiming "No reply" when we simply don't know.
+    const replyText = s.reply === true ? 'Owner replied' : s.reply === false ? 'No reply' : '';
+    return `
     <div class="rev-sample">
       <span class="rev-stars">${'★'.repeat(s.rating)}${'☆'.repeat(5 - s.rating)}</span>
       <p class="rev-text">“${escapeHtml(s.text)}”</p>
-      <span class="rev-meta">${escapeHtml(s.author)} · ${s.reply ? 'Owner replied' : 'No reply'}</span>
-    </div>`).join('');
+      <span class="rev-meta">${escapeHtml(s.author)}${replyText ? ' · ' + replyText : ''}</span>
+    </div>`;
+  }).join('');
   return `<div class="detail-block">
     ${rows ? `<div class="dist">${rows}</div>` : ''}
     <div class="rev-samples">${samples}</div>
@@ -202,9 +215,10 @@ function renderReport(report, opts = {}) {
       <div class="overall-txt">
         <span class="overall-grade band-${report.overallBand}">${escapeHtml(report.overallGrade)}</span>
         <p class="overall-lead">Here is what a customer finds when they search for you — and where you are quietly losing jobs to the crew down the road.</p>
-        <a href="/#contact" class="btn btn-gold">Get my free Business Checkup follow-up</a>
+        <a href="/checkup" class="btn btn-gold">Get my free Business Checkup follow-up</a>
       </div>
     </div>
+    <p class="overall-disclaimer">Some figures below are best-effort estimates, not verified facts — see the note at the bottom for details.</p>
   </section>
 
   <section class="cat-grid">
@@ -214,7 +228,7 @@ function renderReport(report, opts = {}) {
   <!-- CLOSING CTA (site style) -->
   <section class="statement report-cta">
     <p>Your best marketing is a happy customer.<br /><em>Let's make sure the whole town hears about it.</em></p>
-    <a href="/#contact" class="btn btn-gold btn-wide report-cta-btn">Get my free Business Checkup</a>
+    <a href="/checkup" class="btn btn-gold btn-wide report-cta-btn">Get my free Business Checkup</a>
     <p class="report-cta-sub">Free. Plain English. The findings are yours to keep whether you hire us or not.</p>
   </section>
 

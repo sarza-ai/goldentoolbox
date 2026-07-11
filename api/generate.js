@@ -45,7 +45,7 @@ async function coerceBusiness(body) {
   return resolved.confident ? resolved.business : null;
 }
 
-async function fireFormspree(business, contact, slug, req) {
+async function fireFormspree(business, contact, slug, req, cached) {
   try {
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'goldentoolbox.com';
     const proto = req.headers['x-forwarded-proto'] || 'https';
@@ -53,13 +53,16 @@ async function fireFormspree(business, contact, slug, req) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({
-        _subject: 'Golden Toolbox — new Business Checkup',
+        _subject: cached
+          ? 'Golden Toolbox — Business Checkup requested (existing report)'
+          : 'Golden Toolbox — new Business Checkup',
         Name: contact.name || '',
         Business: business.name,
         email: contact.email || '',
         Phone: contact.phone || business.phone || '',
         Website: business.website || '',
         Report: `${proto}://${host}/checkup/${slug}`,
+        Note: cached ? 'This business already had a report on file (within 30 days) — someone just requested it again, still a live lead.' : '',
       }),
     });
   } catch (e) { /* lead notify must never block report generation */ }
@@ -92,6 +95,9 @@ module.exports = async (req, res) => {
   // --- cache check (30 days) ---
   const cachedSlug = await store.getCachedSlug(business);
   if (cachedSlug) {
+    // Someone requesting an already-cached report is still a live lead event —
+    // don't let the cache hit silently swallow the notification.
+    fireFormspree(business, contact, cachedSlug, req, true);
     return json(res, 200, { slug: cachedSlug, cached: true });
   }
 
@@ -99,7 +105,7 @@ module.exports = async (req, res) => {
   try {
     const report = await runPipeline(business, { source: body.source === 'admin' ? 'admin' : 'form' });
     // fire-and-forget lead notification (skip for admin-initiated runs)
-    if (report.source !== 'admin') fireFormspree(business, contact, report.slug, req);
+    if (report.source !== 'admin') fireFormspree(business, contact, report.slug, req, false);
     return json(res, 200, { slug: report.slug, cached: false });
   } catch (e) {
     console.error('[checkup:generate] failed', e);

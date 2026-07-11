@@ -110,15 +110,17 @@ function buildTechnoStack(html) {
   };
 }
 
-// reviewReplyRate is passed in from the mock baseline — a live HTML scan can't
-// see Google review replies; that portion stays mock until Places lands (#4).
-function buildBusinessDetails(html, reviewReplyRate) {
+// No free/zero-cost source (HTML scan or Google Places) exposes whether an
+// owner replies to reviews, so this used to carry the mock baseline's
+// fabricated reply-rate number straight through — which could sit right next
+// to real review samples that visibly contradicted it. Don't claim a number
+// we can't back up: say plainly it isn't available, and don't score it.
+function buildBusinessDetails(html) {
   const chat = detectChat(html);
   const host = detectHosting(html);
-  let score = 30;
-  if (chat.found) score += 30;
-  if (host !== 'Custom / Unknown') score += 12;
-  score += Math.round(reviewReplyRate * 0.3);
+  let score = 35;
+  if (chat.found) score += 40;
+  if (host !== 'Custom / Unknown') score += 25;
   return {
     score: Math.min(100, score),
     summary: chat.found
@@ -128,13 +130,13 @@ function buildBusinessDetails(html, reviewReplyRate) {
       chatWidget: chat.found,
       chatProvider: chat.provider,
       hostingPlatform: host,
-      reviewReplyRate,
-      source: 'Live HTML scan (chat + hosting); review replies pending Places integration',
+      reviewReplyRate: null,
+      source: 'Live HTML scan (chat + hosting); review reply rate is not exposed by any free data source',
     },
     checks: [
       { label: 'Live chat / instant answers', ok: chat.found, value: chat.found ? chat.provider : 'Not found' },
       { label: 'Hosting platform detected', ok: host !== 'Custom / Unknown', value: host },
-      { label: 'Review reply rate', ok: reviewReplyRate >= 50, value: reviewReplyRate + '%' },
+      { label: 'Review reply rate', ok: true, value: 'Not available' },
     ],
   };
 }

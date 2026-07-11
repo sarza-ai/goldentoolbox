@@ -123,8 +123,7 @@ async function runPipeline(business, opts = {}) {
     replaceCategory(report, 'techno-stack', techBuilt);
     live.push('techno-stack');
 
-    const priorReplyRate = report.categories.find((c) => c.id === 'business-details').details.reviewReplyRate;
-    const bizBuilt = buildBusinessDetails(htmlResult.html, priorReplyRate);
+    const bizBuilt = buildBusinessDetails(htmlResult.html);
     replaceCategory(report, 'business-details', bizBuilt);
     live.push('business-details');
 
@@ -160,8 +159,7 @@ async function runPipeline(business, opts = {}) {
     replaceCategory(report, 'gbp', places.buildGbp(details));
     live.push('gbp');
 
-    const priorReplyRate = report.categories.find((c) => c.id === 'reputation').details.replyRate;
-    replaceCategory(report, 'reputation', places.buildReputation(details, priorReplyRate));
+    replaceCategory(report, 'reputation', places.buildReputation(details));
     live.push('reputation');
 
     const priorDirDetails = report.categories.find((c) => c.id === 'directory').details;
