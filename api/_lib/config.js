@@ -9,22 +9,27 @@ const TOOLS = {
   time: { name: 'The Time Tool', anchor: '/#tool-time' },
 };
 
-// Category definitions in report display order.
-// weight -> contribution to the overall rolled score.
+// Category definitions in report display order — ordered for narrative and
+// emotional impact (biggest revenue-relevant story first), not by data
+// pipeline / collection order. Speed-to-Lead leads because "what happens
+// when someone calls right now" is the single most visceral, ownable moment
+// in the report. Techno Stack sits last — real signal, but the least human
+// of the eight, so it reads as an appendix rather than an opener.
+// weight -> contribution to the overall rolled score (unaffected by order).
 const CATEGORIES = [
   {
-    id: 'business-details',
-    label: 'Business Details',
-    weight: 1,
-    tools: ['visibility'],
-    blurb: 'How well your site turns visitors into conversations.',
+    id: 'speed-to-lead',
+    label: 'Speed-to-Lead',
+    weight: 1.2,
+    tools: ['leadcapture'],
+    blurb: 'What happens the moment someone calls and you cannot pick up.',
   },
   {
-    id: 'techno-stack',
-    label: 'Techno Stack',
-    weight: 1,
-    tools: ['visibility'],
-    blurb: 'The tracking and ads plumbing that lets you measure and grow.',
+    id: 'reputation',
+    label: 'Online Reputation',
+    weight: 1.4,
+    tools: ['reputation'],
+    blurb: 'Your star rating, review volume, and how you respond.',
   },
   {
     id: 'gbp',
@@ -41,11 +46,11 @@ const CATEGORIES = [
     blurb: 'Whether Google, Facebook, Nextdoor, and X agree on who you are.',
   },
   {
-    id: 'reputation',
-    label: 'Online Reputation',
-    weight: 1.4,
-    tools: ['reputation'],
-    blurb: 'Your star rating, review volume, and how you respond.',
+    id: 'competitors',
+    label: 'Local Competitor Snapshot',
+    weight: 1,
+    tools: ['visibility', 'reputation'],
+    blurb: 'Where you land against the crews you show up next to.',
   },
   {
     id: 'performance',
@@ -55,18 +60,18 @@ const CATEGORIES = [
     blurb: 'How fast and healthy your site is on a real phone.',
   },
   {
-    id: 'speed-to-lead',
-    label: 'Speed-to-Lead',
-    weight: 1.2,
-    tools: ['leadcapture'],
-    blurb: 'What happens the moment someone calls and you cannot pick up.',
+    id: 'business-details',
+    label: 'Business Details',
+    weight: 1,
+    tools: ['visibility'],
+    blurb: 'How well your site turns visitors into conversations.',
   },
   {
-    id: 'competitors',
-    label: 'Local Competitor Snapshot',
+    id: 'techno-stack',
+    label: 'Techno Stack',
     weight: 1,
-    tools: ['visibility', 'reputation'],
-    blurb: 'Where you land against the crews you show up next to.',
+    tools: ['visibility'],
+    blurb: 'The tracking and ads plumbing that lets you measure and grow.',
   },
 ];
 

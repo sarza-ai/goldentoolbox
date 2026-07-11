@@ -6,6 +6,7 @@
    Docs: https://developers.google.com/speed/docs/insights/v5/get-started */
 
 const { ensureHttp } = require('./util');
+const copy = require('./copy');
 
 const ENDPOINT = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
 const TIMEOUT_MS = 30000;
@@ -106,8 +107,8 @@ async function runPerformance(website) {
 
   return {
     score,
-    summary: `Mobile PageSpeed ${mobileScore}/100` + (desktop.score != null ? `, desktop ${desktopScore}/100.` : '.') +
-      (mobile.hasField ? ' Core Web Vitals reflect real visitor data.' : ' (Lab data — site has too little traffic for field metrics.)'),
+    summary: copy.performanceSummary(mobileScore) +
+      (mobile.hasField ? ' (Based on real visitor data.)' : ' (Lab estimate — site has too little traffic for real visitor data yet.)'),
     details: {
       mobileScore, desktopScore: desktop.score != null ? desktopScore : null,
       lcp, cls, inp, cwv,

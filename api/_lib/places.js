@@ -8,6 +8,7 @@
 const { normalizeDomain, rankByRating } = require('./util');
 const { guessTrade } = require('./mock');
 const { patchDirectoryRow } = require('./directory');
+const copy = require('./copy');
 
 const TIMEOUT_MS = 10000;
 const TEXTSEARCH_URL = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
@@ -125,9 +126,7 @@ function buildGbp(details) {
   score += Math.min(16, Math.round(photos / 2));
   return {
     score: Math.min(100, score),
-    summary: active
-      ? 'Your Google Business Profile is live on Google, with room to fill it out.'
-      : `Google lists your business status as "${details.business_status}" — this needs attention.`,
+    summary: copy.gbpSummary(active, details.business_status || 'unverified'),
     details: { verified: active, hasWebsite, hasHours, hasPhone, hasAddress, photos, source: 'Google Places (live)' },
     checks: [
       { label: 'Listed & operational on Google', ok: active, value: active ? 'Yes' : (details.business_status || 'Unknown') },
@@ -155,7 +154,7 @@ function buildReputation(details) {
   const score = Math.round((rating / 5) * 70) + Math.min(30, Math.round(count / 3.33));
   return {
     score: Math.min(100, score),
-    summary: `${rating.toFixed(1)}★ across ${count} Google reviews (live).`,
+    summary: copy.reputationSummary(rating, count),
     details: {
       rating, count, replyRate: null, distribution: null, samples,
       source: 'Google Places (live) — up to 5 most recent reviews shown; reply data is not exposed by the API',
@@ -192,7 +191,7 @@ function buildCompetitors(results, business, details) {
   const score = Math.round(Math.max(10, 100 - (rank - 1) * (90 / comps.length)));
   return {
     score,
-    summary: `You rank #${rank} of ${comps.length} nearby ${business.trade || 'local'} businesses by reviews and rating (live).`,
+    summary: copy.competitorsSummary(rank, comps.length, business.trade, top),
     details: {
       rank, total: comps.length,
       leaderboard: ranked.map((c) => ({ name: c.name, reviews: c.reviews, rating: c.rating.toFixed(1), you: !!c.you })),

@@ -228,6 +228,79 @@
 .leaderboard tr.you { background: #FBF3E2; }
 .leaderboard tr.you .lb-name { color: var(--gold-lo); font-weight: 800; }
 
+/* ---------- executive summary ---------- */
+.exec-summary {
+  max-width: 640px; margin: clamp(24px, 4vw, 40px) auto 0; text-align: left;
+  background: var(--ink); color: var(--paper); border-radius: 18px;
+  padding: clamp(22px, 3.5vw, 32px); box-shadow: 0 16px 44px rgba(34, 27, 18, 0.14);
+}
+.exec-summary-tag {
+  display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--gold-hi); margin-bottom: 14px;
+}
+.exec-summary-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.exec-item {
+  display: flex; align-items: baseline; gap: 10px;
+  padding-top: 12px; border-top: 1px solid rgba(246, 239, 227, 0.14);
+}
+.exec-summary-list li:first-child { padding-top: 0; border-top: none; }
+.exec-item-label {
+  flex: none; font-family: var(--disp); font-weight: 700; font-style: italic;
+  font-size: 13.5px; color: var(--gold-hi); min-width: 9em;
+}
+.exec-item-line { font-size: 14.5px; line-height: 1.5; color: rgba(246, 239, 227, 0.92); }
+
+/* ---------- speed-to-lead call flow ---------- */
+.callflow { display: flex; flex-wrap: wrap; gap: clamp(16px, 3vw, 28px); margin-top: 6px; }
+.callflow-track { flex: 1 1 200px; min-width: 180px; }
+.callflow-label {
+  display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; margin-bottom: 10px;
+}
+.callflow-now .callflow-label { color: var(--band-bad); }
+.callflow-future .callflow-label { color: var(--band-good); }
+.callflow-steps { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.callflow-step {
+  width: 100%; text-align: center; font-size: 13px; font-weight: 600;
+  padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--line-2);
+  background: #FDFAF3;
+}
+.callflow-now .callflow-step:last-child {
+  background: rgba(160, 74, 42, 0.08); border-color: rgba(160, 74, 42, 0.35); color: var(--band-bad);
+}
+.callflow-future .callflow-step:not(:first-child) {
+  background: rgba(63, 122, 63, 0.08); border-color: rgba(63, 122, 63, 0.35); color: var(--band-good);
+}
+.callflow-arrow { font-size: 14px; color: var(--muted); line-height: 1; padding: 2px 0; }
+.callflow-caveat {
+  flex-basis: 100%; font-size: 12px; color: var(--muted); font-style: italic;
+  margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--line);
+}
+
+/* ---------- collapsible technical detail ---------- */
+.chk-details summary, .cwv-details summary {
+  cursor: pointer; font-size: 12.5px; font-weight: 700; color: var(--gold-lo);
+  list-style: none; padding: 6px 0; margin-top: 4px;
+}
+.chk-details summary::-webkit-details-marker, .cwv-details summary::-webkit-details-marker { display: none; }
+.chk-details summary::after, .cwv-details summary::after { content: ' +'; }
+.chk-details[open] summary::after, .cwv-details[open] summary::after { content: ' −'; }
+.chk-details[open] summary, .cwv-details[open] summary { margin-bottom: 4px; }
+
+/* ---------- closing opportunities ---------- */
+.opportunities { padding-top: 0; }
+.opp-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; text-align: left; }
+.opp-card {
+  display: block; background: #FDFAF3; border: 1.5px solid var(--line); border-radius: 16px;
+  padding: clamp(18px, 2.5vw, 24px); transition: transform 0.25s var(--ease), border-color 0.25s;
+}
+.opp-card:hover { transform: translateY(-2px); border-color: var(--gold); }
+.opp-name {
+  display: block; font-family: var(--disp); font-weight: 800; font-style: italic;
+  font-size: 17px; color: var(--gold-lo); margin-bottom: 8px;
+}
+.opp-blurb { font-size: 14px; line-height: 1.55; color: var(--muted); }
+
 /* ---------- framing callout ---------- */
 .frame {
   margin-top: 16px; border-radius: 12px; padding: 14px 16px;
@@ -262,11 +335,14 @@
   .cat-grid { grid-template-columns: 1fr; }
   .overall { flex-direction: column; text-align: center; }
   .overall-txt { text-align: center; }
+  .opp-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 520px) {
   .cat-head { gap: 12px; }
   .cwv-row { flex-wrap: wrap; }
   .cwv { min-width: 28%; }
+  .exec-item { flex-direction: column; gap: 3px; }
+  .exec-item-label { min-width: 0; }
 }
 
 /* ---------- print / PDF ---------- */
