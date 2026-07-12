@@ -13,8 +13,15 @@ const { runPipeline } = require('./_lib/pipeline');
 const { resolveBusiness } = require('./_lib/resolve');
 const { guessTrade } = require('./_lib/mock');
 const { normalizeDomain } = require('./_lib/util');
+const email = require('./_lib/email');
 
 const FORMSPREE = process.env.FORMSPREE_ENDPOINT || 'https://formspree.io/f/mgojwopl';
+
+function reportUrl(req, slug) {
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'goldentoolbox.com';
+  const proto = req.headers['x-forwarded-proto'] || 'https';
+  return `${proto}://${host}/checkup/${slug}`;
+}
 
 async function coerceBusiness(body) {
   // Prefer an explicitly-confirmed business; otherwise resolve from contact.
@@ -45,10 +52,8 @@ async function coerceBusiness(body) {
   return resolved.confident ? resolved.business : null;
 }
 
-async function fireFormspree(business, contact, slug, req, cached) {
+async function fireFormspree(business, contact, url, cached) {
   try {
-    const host = req.headers['x-forwarded-host'] || req.headers.host || 'goldentoolbox.com';
-    const proto = req.headers['x-forwarded-proto'] || 'https';
     await fetch(FORMSPREE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -61,11 +66,19 @@ async function fireFormspree(business, contact, slug, req, cached) {
         email: contact.email || '',
         Phone: contact.phone || business.phone || '',
         Website: business.website || '',
-        Report: `${proto}://${host}/checkup/${slug}`,
+        Report: url,
         Note: cached ? 'This business already had a report on file (within 30 days) — someone just requested it again, still a live lead.' : '',
       }),
     });
   } catch (e) { /* lead notify must never block report generation */ }
+}
+
+// Two independent, fire-and-forget notifications: Formspree tells the owner
+// (existing pipe, untouched), Resend confirms to whoever submitted the form
+// at the email address they typed in. Neither can block report generation.
+function notify(business, contact, url, cached) {
+  fireFormspree(business, contact, url, cached);
+  email.sendConfirmation(contact.email, business, url);
 }
 
 module.exports = async (req, res) => {
@@ -97,15 +110,15 @@ module.exports = async (req, res) => {
   if (cachedSlug) {
     // Someone requesting an already-cached report is still a live lead event —
     // don't let the cache hit silently swallow the notification.
-    fireFormspree(business, contact, cachedSlug, req, true);
+    notify(business, contact, reportUrl(req, cachedSlug), true);
     return json(res, 200, { slug: cachedSlug, cached: true });
   }
 
   // --- run the pipeline ---
   try {
     const report = await runPipeline(business, { source: body.source === 'admin' ? 'admin' : 'form' });
-    // fire-and-forget lead notification (skip for admin-initiated runs)
-    if (report.source !== 'admin') fireFormspree(business, contact, report.slug, req, false);
+    // fire-and-forget notifications (skip for admin-initiated runs)
+    if (report.source !== 'admin') notify(business, contact, reportUrl(req, report.slug), false);
     return json(res, 200, { slug: report.slug, cached: false });
   } catch (e) {
     console.error('[checkup:generate] failed', e);
