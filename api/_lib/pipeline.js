@@ -20,8 +20,9 @@ const { CATEGORIES, rollup, grade } = require('./config');
 const { runPerformance } = require('./pagespeed');
 const {
   fetchSiteHtml, buildCustomerExperience, buildLeadCapture, buildTrustSignals,
-  siteSignalsForVisibility,
+  siteSignalsForVisibility, isThinShell,
 } = require('./htmlscan');
+const { parseStructuredData } = require('./structured');
 const { buildContentQuality } = require('./content');
 const places = require('./places');
 const store = require('./store');
@@ -106,22 +107,43 @@ async function runPipeline(business, opts = {}) {
 
   // --- sequential apply phase: fast, CPU-only (except Content Quality) ---
 
+  // Rendered signals from PageSpeed's real headless-Chrome run — reused across
+  // categories so an SPA that hides content from the raw fetch is still read.
+  const rendered = perfResult && perfResult.rendered ? perfResult.rendered : null;
+
   // Website Performance (PageSpeed)
-  if (perfResult && replaceCategory(report, 'performance', perfResult)) {
+  if (perfResult && replaceCategory(report, 'performance', perfResult.category)) {
     live.push('performance');
     markLive(report, ['performance']);
   }
 
-  // HTML-derived categories: Customer Experience, Lead Capture, Trust Signals
+  // Shared per-scan context: structured data recovered from the HTML (JSON-LD /
+  // OpenGraph — present even on SPAs), the PageSpeed rendered signals, and
+  // whether the page is a thin JS shell (so builders mark unreadable checks
+  // neutral instead of failing them).
   let fetchedHtml = null, siteSignals = null;
+  const structured = htmlResult ? parseStructuredData(htmlResult.html) : {};
+  const thinShell = htmlResult ? isThinShell(htmlResult.html) : false;
+  const ctx = { structured, rendered: rendered || {}, thinShell };
+
+  // Visibility's site half is available if EITHER the HTML fetch OR the
+  // PageSpeed render succeeded (heavy SPAs often fail the raw fetch but render
+  // fine in PageSpeed).
+  if (htmlResult || rendered) {
+    siteSignals = siteSignalsForVisibility(
+      htmlResult ? htmlResult.html : null,
+      htmlResult ? htmlResult.finalUrl : '',
+      ctx,
+    );
+  }
+
+  // HTML-derived categories: Customer Experience, Lead Capture, Trust Signals
   if (htmlResult) {
     fetchedHtml = htmlResult.html;
-    siteSignals = siteSignalsForVisibility(fetchedHtml, htmlResult.finalUrl);
-
     const applied = [];
-    if (replaceCategory(report, 'customer-experience', buildCustomerExperience(fetchedHtml, htmlResult.finalUrl))) applied.push('customer-experience');
-    if (replaceCategory(report, 'lead-capture', buildLeadCapture(fetchedHtml, business.phone))) applied.push('lead-capture');
-    if (replaceCategory(report, 'trust-signals', buildTrustSignals(fetchedHtml))) applied.push('trust-signals');
+    if (replaceCategory(report, 'customer-experience', buildCustomerExperience(fetchedHtml, htmlResult.finalUrl, ctx))) applied.push('customer-experience');
+    if (replaceCategory(report, 'lead-capture', buildLeadCapture(fetchedHtml, business.phone, ctx))) applied.push('lead-capture');
+    if (replaceCategory(report, 'trust-signals', buildTrustSignals(fetchedHtml, ctx))) applied.push('trust-signals');
     live.push(...applied);
     markLive(report, applied);
   }
@@ -145,10 +167,12 @@ async function runPipeline(business, opts = {}) {
     markLive(report, applied);
   }
 
-  // Content Quality (Gemini if keyed, else free heuristic) — needs the HTML
-  if (fetchedHtml) {
+  // Content Quality — Gemini vision on the PageSpeed-rendered screenshot when
+  // the raw HTML is a thin shell, else Gemini text, else the free heuristic.
+  // Runs when we have either readable HTML or a rendered screenshot.
+  if (fetchedHtml || (rendered && rendered.screenshotDataUri)) {
     try {
-      const cq = await buildContentQuality(fetchedHtml, business);
+      const cq = await buildContentQuality(fetchedHtml, business, ctx);
       if (replaceCategory(report, 'content-quality', cq)) {
         live.push('content-quality');
         markLive(report, ['content-quality']);

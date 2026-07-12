@@ -19,13 +19,16 @@ function band(metric, value) {
   return 'warn';
 }
 
-async function callStrategy(url, strategy, key) {
-  const qs = new URLSearchParams({ url, strategy, category: 'performance' });
-  if (key) qs.set('key', key);
+async function callStrategy(url, strategy, key, categories = ['performance']) {
+  // The API accepts repeated `category` params; URLSearchParams collapses a
+  // repeated key, so build the query by hand to request several at once.
+  const parts = [`url=${encodeURIComponent(url)}`, `strategy=${strategy}`];
+  categories.forEach((c) => parts.push(`category=${c}`));
+  if (key) parts.push(`key=${encodeURIComponent(key)}`);
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(`${ENDPOINT}?${qs}`, { signal: ctrl.signal });
+    const res = await fetch(`${ENDPOINT}?${parts.join('&')}`, { signal: ctrl.signal });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       throw new Error(`pagespeed ${strategy} ${res.status}: ${body.slice(0, 180)}`);
@@ -34,6 +37,36 @@ async function callStrategy(url, strategy, key) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Lighthouse runs in real headless Chrome, so its response already reflects the
+// page AFTER JavaScript. Pull the free rendered signals we'd otherwise fail to
+// see on an SPA: mobile/HTTPS/indexable audits + the rendered screenshot (fed
+// to Gemini vision for Content Quality). All optional — absent audits => null.
+function auditScore(audits, id) {
+  const a = audits && audits[id];
+  if (!a || a.score == null) return null;
+  return a.score === 1;
+}
+
+function parseRendered(data) {
+  const lh = (data && data.lighthouseResult) || {};
+  const audits = lh.audits || {};
+  // full-page render preferred; fall back to the final-viewport screenshot
+  const fps = lh.fullPageScreenshot && lh.fullPageScreenshot.screenshot;
+  const finalShot = audits['final-screenshot'] && audits['final-screenshot'].details;
+  const screenshotDataUri = (fps && fps.data) || (finalShot && finalShot.data) || null;
+  const title = audits['document-title'] && audits['document-title'].details &&
+    audits['document-title'].details.items && audits['document-title'].details.items[0] &&
+    audits['document-title'].details.items[0].source;
+  return {
+    mobileViewport: auditScore(audits, 'viewport'),
+    indexable: auditScore(audits, 'is-crawlable'),
+    https: auditScore(audits, 'is-on-https'),
+    seoScore: lh.categories && lh.categories.seo ? Math.round(lh.categories.seo.score * 100) : null,
+    screenshotDataUri,
+    title: title || null,
+  };
 }
 
 // Pull lab score + lab/field CWV out of a runPagespeed response.
@@ -67,9 +100,12 @@ async function runPerformance(website) {
   const url = ensureHttp(website);
   if (!url) throw new Error('no website url');
 
-  // Mobile is the priority for trades; desktop is best-effort.
+  // Mobile is the priority for trades; desktop is best-effort. Ask the mobile
+  // run for SEO too (viewport/crawlable audits) — cheap extra signal; keep
+  // desktop performance-only to limit payload/time. HTTPS is read from the
+  // final URL, so best-practices isn't requested (keeps the response smaller).
   const [mobileRes, desktopRes] = await Promise.allSettled([
-    callStrategy(url, 'mobile', key),
+    callStrategy(url, 'mobile', key, ['performance', 'seo']),
     callStrategy(url, 'desktop', key),
   ]);
 
@@ -104,7 +140,7 @@ async function runPerformance(website) {
     { label: 'Interaction to Next Paint', ok: inp == null ? true : inp <= 200, value: inp == null ? 'Not enough traffic yet' : fmt(inp, 'ms', 0) },
   ];
 
-  return {
+  const category = {
     score,
     summary: `Mobile PageSpeed ${mobileScore}/100` + (desktop.score != null ? `, desktop ${desktopScore}/100.` : '.') +
       (mobile.hasField ? ' Core Web Vitals reflect real visitor data.' : ' (Lab data — site has too little traffic for field metrics.)'),
@@ -116,6 +152,9 @@ async function runPerformance(website) {
     },
     checks,
   };
+
+  // rendered signals come from the mobile Lighthouse run (real headless Chrome)
+  return { category, rendered: parseRendered(mobileRes.value) };
 }
 
 module.exports = { runPerformance };

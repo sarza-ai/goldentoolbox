@@ -16,7 +16,9 @@
 const { scoreChecks } = require('./util');
 
 const TIMEOUT_MS = 12000;
-const MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+// gemini-1.5-* was retired Sept 2025; 2.5-flash is the current free-tier
+// multimodal model (handles both the text prompt and the screenshot vision read).
+const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 // --- shared: turn checks into the category result -------------------------
 function toResult(c, extra) {
@@ -68,6 +70,16 @@ function heuristicContentQuality(html) {
 }
 
 // --- Gemini path (free tier) ----------------------------------------------
+const RUBRIC = `Answer ONLY with a compact JSON object, no markdown, with these exact keys:
+{
+  "clear": boolean,        // is it obvious within seconds what they do?
+  "cta": boolean,          // is there a clear call to action (call, quote, book)?
+  "trust": boolean,        // does it build trust (licensed, reviews, guarantee, experience)?
+  "wouldHire": boolean,    // would a typical customer feel confident hiring them from this page?
+  "biggestWeakness": string, // one sentence, plain English, the single most valuable fix
+  "summary": string        // one encouraging but honest sentence for the owner
+}`;
+
 function buildPrompt(text, business) {
   return `You are auditing the homepage of a local trades business for the owner.
 Business name: ${business.name || 'Unknown'}
@@ -78,22 +90,38 @@ Here is the visible text of their homepage:
 ${text.slice(0, 8000)}
 """
 
-Answer ONLY with a compact JSON object, no markdown, with these exact keys:
-{
-  "clear": boolean,        // is it obvious within seconds what they do?
-  "cta": boolean,          // is there a clear call to action (call, quote, book)?
-  "trust": boolean,        // does it build trust (licensed, reviews, guarantee, experience)?
-  "wouldHire": boolean,    // would a typical customer feel confident hiring them from this page?
-  "biggestWeakness": string, // one sentence, plain English, the single most valuable fix
-  "summary": string        // one encouraging but honest sentence for the owner
-}`;
+${RUBRIC}`;
 }
 
-async function geminiContentQuality(html, business) {
+function buildVisionPrompt(business) {
+  return `You are auditing the homepage of a local trades business for the owner.
+Business name: ${business.name || 'Unknown'}
+Trade: ${business.trade || 'Home services'}
+
+The attached image is a full-page screenshot of their homepage as a customer sees it. Judge it as a customer would.
+
+${RUBRIC}`;
+}
+
+function mapParsed(parsed) {
+  return {
+    clear: !!parsed.clear, cta: !!parsed.cta, trust: !!parsed.trust, wouldHire: !!parsed.wouldHire,
+    biggestWeakness: parsed.biggestWeakness || null, summary: parsed.summary || null,
+  };
+}
+
+function splitDataUri(dataUri) {
+  const comma = dataUri.indexOf(',');
+  const b64 = comma >= 0 ? dataUri.slice(comma + 1) : dataUri;
+  const m = /^data:(image\/[a-z]+)/i.exec(dataUri);
+  return { mime: m ? m[1] : 'image/jpeg', b64 };
+}
+
+// One call site for both the text and vision prompts. `parts` is the Gemini
+// `contents[0].parts` array. Returns the parsed JSON object or null.
+async function callGemini(parts) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
-  const text = stripText(html);
-  if (!text) return null;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(key)}`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -103,7 +131,7 @@ async function geminiContentQuality(html, business) {
       signal: ctrl.signal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: buildPrompt(text, business) }] }],
+        contents: [{ parts }],
         generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
       }),
     });
@@ -116,12 +144,7 @@ async function geminiContentQuality(html, business) {
     const raw = data && data.candidates && data.candidates[0] &&
       data.candidates[0].content && data.candidates[0].content.parts &&
       data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return toResult({
-      clear: !!parsed.clear, cta: !!parsed.cta, trust: !!parsed.trust, wouldHire: !!parsed.wouldHire,
-      biggestWeakness: parsed.biggestWeakness || null, summary: parsed.summary || null,
-    }, { analyzedBy: 'Gemini (live)' });
+    return raw ? JSON.parse(raw) : null;
   } catch (e) {
     console.error('[content] gemini error:', e.message);
     return null;
@@ -130,10 +153,40 @@ async function geminiContentQuality(html, business) {
   }
 }
 
-// buildContentQuality(html, business) -> category result. Tries Gemini, falls
-// back to the free heuristic. Never throws.
-async function buildContentQuality(html, business) {
-  if (!html) return null;
+async function geminiContentQuality(html, business) {
+  const text = stripText(html);
+  if (!text) return null;
+  const parsed = await callGemini([{ text: buildPrompt(text, business) }]);
+  return parsed ? toResult(mapParsed(parsed), { analyzedBy: 'Gemini (live)' }) : null;
+}
+
+// Reads a rendered screenshot (from PageSpeed) — the reliable way to "see" an
+// SPA whose raw HTML we couldn't read.
+async function geminiVisionContentQuality(dataUri, business) {
+  if (!dataUri) return null;
+  const { mime, b64 } = splitDataUri(dataUri);
+  const parsed = await callGemini([
+    { inline_data: { mime_type: mime, data: b64 } },
+    { text: buildVisionPrompt(business) },
+  ]);
+  return parsed ? toResult(mapParsed(parsed), { analyzedBy: 'Gemini vision (live)' }) : null;
+}
+
+// buildContentQuality(html, business, ctx) -> category result (or null to keep
+// the mock baseline). ctx = { rendered, thinShell }. Never throws.
+// - thin JS shell: read the rendered screenshot via Gemini vision; if vision
+//   isn't available, return null rather than scoring an empty page.
+// - normal page: Gemini text read, else the free heuristic.
+async function buildContentQuality(html, business, ctx = {}) {
+  const { rendered = {}, thinShell = false } = ctx;
+  const shot = rendered.screenshotDataUri;
+
+  if ((thinShell || !html) && shot) {
+    const viaVision = await geminiVisionContentQuality(shot, business);
+    if (viaVision) return viaVision;
+  }
+  if (thinShell || !html) return null; // couldn't read it and no screenshot read
+
   const viaGemini = await geminiContentQuality(html, business);
   return viaGemini || heuristicContentQuality(html);
 }

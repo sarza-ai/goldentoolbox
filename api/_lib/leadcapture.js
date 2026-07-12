@@ -44,13 +44,18 @@ function bandFor(channels) {
 
 // Shared result builder — mock passes random channel booleans, the live path
 // passes booleans detected from the site HTML + phone type. Identical shape.
-function buildLeadCaptureResult(channels, extra = {}) {
+// opts.thin: on a thin JS shell, channels we couldn't see are shown neutral
+// ("Unknown") rather than "Not offered" — the band still counts only what we
+// positively found.
+function buildLeadCaptureResult(channels, extra = {}, opts = {}) {
   const { score, count, afterHours } = bandFor(channels);
-  const checks = Object.keys(CHANNEL_LABELS).map((k) => ({
-    label: CHANNEL_LABELS[k],
-    ok: !!channels[k],
-    value: channels[k] ? 'Available' : 'Not offered',
-  }));
+  const checks = Object.keys(CHANNEL_LABELS).map((k) => {
+    const has = !!channels[k];
+    if (!has && opts.thin) {
+      return { label: CHANNEL_LABELS[k], ok: false, neutral: true, value: 'Unknown (JavaScript site)' };
+    }
+    return { label: CHANNEL_LABELS[k], ok: has, value: has ? 'Available' : 'Not offered' };
+  });
 
   let summary;
   if (count >= 4) summary = `Customers have ${count} easy ways to reach you — that's how you turn traffic into booked jobs.`;

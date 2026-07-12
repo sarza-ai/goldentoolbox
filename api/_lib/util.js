@@ -137,9 +137,15 @@ function rankByRating(items, getRating, getReviews) {
 // lift a middling score — they can never create a penalty. A check marks
 // itself bonus with `bonus: true`; `weight` tunes its pull (core: relative
 // share of the 100; bonus: literal points added, default 6).
+// A third check kind — `neutral: true` — is for signals we genuinely couldn't
+// read (e.g. a JavaScript-only page whose content never reached us). Neutral
+// checks are display-only: excluded from the base AND the bonus, so an
+// unreadable check neither helps nor hurts. That's what lets a thin SPA shell
+// be scored fairly instead of failing every text check it hid from us.
 function scoreChecks(checks) {
   let coreWeight = 0, corePassed = 0, bonusCredit = 0;
   (checks || []).forEach((c) => {
+    if (c.neutral) return; // unreadable/unknown — never scored
     if (c.bonus) {
       if (c.ok) bonusCredit += (c.weight != null ? c.weight : 6);
     } else {

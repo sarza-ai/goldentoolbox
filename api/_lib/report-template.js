@@ -68,8 +68,10 @@ function bar(score) {
 }
 
 function checkRow(chk) {
-  return `<li class="chk ${chk.ok ? 'chk-ok' : 'chk-no'}">
-    <span class="chk-ic" aria-hidden="true">${chk.ok ? '✓' : '✕'}</span>
+  const cls = chk.neutral ? 'chk-unknown' : (chk.ok ? 'chk-ok' : 'chk-no');
+  const ic = chk.neutral ? '–' : (chk.ok ? '✓' : '✕');
+  return `<li class="chk ${cls}">
+    <span class="chk-ic" aria-hidden="true">${ic}</span>
     <span class="chk-label">${escapeHtml(chk.label)}</span>
     <span class="chk-val">${escapeHtml(chk.value)}</span>
   </li>`;
@@ -201,7 +203,7 @@ function renderReport(report, opts = {}) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/styles.css?v=12" />
-<link rel="stylesheet" href="/checkup.css?v=1" />
+<link rel="stylesheet" href="/checkup.css?v=2" />
 </head>
 <body class="report-body">
 
@@ -286,7 +288,7 @@ function renderLoading(slug) {
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="/styles.css?v=12" /><link rel="stylesheet" href="/checkup.css?v=1" />
+<link rel="stylesheet" href="/styles.css?v=12" /><link rel="stylesheet" href="/checkup.css?v=2" />
 </head><body class="report-body">
 <main class="loading-wrap">
   <div class="loading-box" aria-hidden="true">${BRAND_MARK}</div>

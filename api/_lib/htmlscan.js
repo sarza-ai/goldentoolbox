@@ -91,11 +91,11 @@ function detectTracking(html) {
 const BOOKING_SIGNATURES = /calendly\.com|acuityscheduling\.com|squareup\.com\/appointments|setmore\.com|housecallpro\.com|schedulicity\.com|servicetitan\.com\/book|jobber|book(?:ing)?[-_]?(now|online|widget)/i;
 const PHONE_TEXT = /(\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4})/;
 
-function detectChannels(html) {
+function detectChannels(html, structured = {}) {
   const chat = detectChat(html);
   const clickToCall = /href=["']tel:/i.test(html);
-  const phoneVisible = clickToCall || PHONE_TEXT.test(html.replace(/<[^>]+>/g, ' '));
-  const email = /href=["']mailto:/i.test(html) || /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(html);
+  const phoneVisible = clickToCall || PHONE_TEXT.test(html.replace(/<[^>]+>/g, ' ')) || !!structured.telephone;
+  const email = /href=["']mailto:/i.test(html) || /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(html) || !!structured.email;
   const form = /<form[\s>]/i.test(html) || /wpforms|gravityforms|contact-form-7|hs-form|jotform|typeform/i.test(html);
   const booking = BOOKING_SIGNATURES.test(html);
   const text = /href=["']sms:/i.test(html) || /\btext (us|me)\b/i.test(html);
@@ -105,19 +105,51 @@ function detectChannels(html) {
   };
 }
 
-function detectHours(html) {
-  const stripped = html.replace(/<[^>]+>/g, ' ');
+function detectHours(html, structured = {}) {
+  const stripped = String(html || '').replace(/<[^>]+>/g, ' ');
   return /\b(mon|tue|wed|thu|fri|sat|sun)(day)?\b[^.]{0,40}\d/i.test(stripped) ||
     /\b(hours|open)\b[^.]{0,30}\d{1,2}\s?(am|pm|:)/i.test(stripped) ||
-    /24\/7|open 24 hours/i.test(stripped);
+    /24\/7|open 24 hours/i.test(stripped) ||
+    (Array.isArray(structured.hours) && structured.hours.length > 0);
 }
 
 // --- site fundamentals for Visibility -------------------------------------
-function detectSiteBasics(html, finalUrl) {
-  const https = /^https:/i.test(finalUrl || '');
-  const mobile = /<meta[^>]+name=["']viewport["']/i.test(html);
-  const indexed = !/<meta[^>]+name=["']robots["'][^>]*noindex/i.test(html);
+// `rendered` (from PageSpeed's real headless-Chrome run) is authoritative when
+// present — it reflects the page AFTER JavaScript, so it's correct for SPAs
+// where the raw-HTML regex would give false negatives.
+function detectSiteBasics(html, finalUrl, rendered = {}) {
+  const https = /^https:/i.test(finalUrl || '') || rendered.https === true;
+  const mobile = rendered.mobileViewport != null
+    ? rendered.mobileViewport
+    : /<meta[^>]+name=["']viewport["']/i.test(html || '');
+  const indexed = rendered.indexable != null
+    ? rendered.indexable
+    : !/<meta[^>]+name=["']robots["'][^>]*noindex/i.test(html || '');
   return { https, mobile, indexed };
+}
+
+// A page is a "thin shell" when almost no visible text reached us AND it
+// carries a client-side-framework fingerprint — i.e. the content is rendered
+// by JavaScript we didn't execute. On such pages, a *missing* signal isn't a
+// real absence, so builders mark unrecovered checks neutral instead of failing.
+function isThinShell(html) {
+  if (!html) return true;
+  const text = String(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const spaMarker = /<div[^>]+id=["'](root|app|__next|__nuxt)["']|data-reactroot|__NEXT_DATA__|window\.__NUXT__|ng-version=/i.test(html);
+  return text.length < 500 && spaMarker;
+}
+
+// Build a check that becomes neutral ("Unknown") instead of a red failure when
+// we genuinely couldn't read the page (thin JS shell) and have no positive
+// signal. A positive signal always shows as passing regardless.
+function mkCheck(label, positive, valYes, valNo, opts, unreadable) {
+  const o = opts || {};
+  if (positive) return { label, ok: true, value: valYes, weight: o.weight, bonus: o.bonus };
+  if (unreadable) return { label, ok: false, neutral: true, value: 'Unknown (JavaScript site)', weight: o.weight, bonus: o.bonus };
+  return { label, ok: false, value: valNo, weight: o.weight, bonus: o.bonus };
 }
 
 // --- trust signals --------------------------------------------------------
@@ -131,25 +163,33 @@ const TRUST_PATTERNS = {
   bbb: /bbb\.org|better business bureau|bbb accredited|a\+ rating/i,
 };
 
-function detectTrust(html) {
-  const stripped = html.replace(/<script[\s\S]*?<\/script>/gi, ' ');
+function detectTrust(html, structured = {}) {
+  const stripped = String(html || '').replace(/<script[\s\S]*?<\/script>/gi, ' ');
   const out = {};
   for (const k of Object.keys(TRUST_PATTERNS)) out[k] = TRUST_PATTERNS[k].test(stripped);
+  // A published star rating (schema.org aggregateRating) is real social proof.
+  if (structured.aggregateRating) out.testimonials = true;
   return out;
 }
 
 // --- category builders (mock-compatible shape) ----------------------------
-function buildCustomerExperience(html, finalUrl) {
-  const ch = detectChannels(html);
-  const hours = detectHours(html);
-  const { mobile } = detectSiteBasics(html, finalUrl);
+// ctx = { structured, rendered, thinShell }. On a thin shell, if too little is
+// recoverable to score honestly, builders return null so the pipeline keeps the
+// neutral mock baseline rather than emitting an unfair 0 or an inflated 100.
+function buildCustomerExperience(html, finalUrl, ctx = {}) {
+  const { structured = {}, rendered = {}, thinShell = false } = ctx;
+  const ch = detectChannels(html, structured);
+  const hours = detectHours(html, structured);
+  const { mobile } = detectSiteBasics(html, finalUrl, rendered);
+  if (thinShell && [ch.phone, ch.email, hours].filter(Boolean).length < 2) return null;
   const checks = [
-    { label: 'Phone number easy to find', ok: ch.phone, value: ch.phone ? 'Yes' : 'Hard to find', weight: 1.5 },
-    { label: 'Tap-to-call on mobile', ok: ch.clickToCall, value: ch.clickToCall ? 'Yes' : 'No', weight: 1 },
-    { label: 'Contact form on site', ok: ch.form, value: ch.form ? 'Yes' : 'No', weight: 1 },
-    { label: 'Email address available', ok: ch.email, value: ch.email ? 'Yes' : 'No', weight: 1 },
-    { label: 'Hours listed on your site', ok: hours, value: hours ? 'Yes' : 'Not found', weight: 1 },
-    { label: 'Reads well on a phone', ok: mobile, value: mobile ? 'Yes' : 'No', weight: 1 },
+    mkCheck('Phone number easy to find', ch.phone, 'Yes', 'Hard to find', { weight: 1.5 }, thinShell),
+    mkCheck('Tap-to-call on mobile', ch.clickToCall, 'Yes', 'No', { weight: 1 }, thinShell),
+    mkCheck('Contact form on site', ch.form, 'Yes', 'No', { weight: 1 }, thinShell),
+    mkCheck('Email address available', ch.email, 'Yes', 'No', { weight: 1 }, thinShell),
+    mkCheck('Hours listed on your site', hours, 'Yes', 'Not found', { weight: 1 }, thinShell),
+    // mobile-friendliness comes from the page <head> / rendered audit — known even on a shell
+    mkCheck('Reads well on a phone', mobile, 'Yes', 'No', { weight: 1 }, false),
   ];
   return {
     score: scoreChecks(checks),
@@ -161,29 +201,34 @@ function buildCustomerExperience(html, finalUrl) {
   };
 }
 
-function buildLeadCapture(html, phone) {
-  const ch = detectChannels(html);
+function buildLeadCapture(html, phone, ctx = {}) {
+  const { structured = {}, thinShell = false } = ctx;
+  const ch = detectChannels(html, structured);
   const channels = {
-    phone: ch.phone || !!phone, email: ch.email, form: ch.form,
+    phone: ch.phone || !!phone || !!structured.telephone, email: ch.email, form: ch.form,
     chat: ch.chat, booking: ch.booking, text: ch.text,
   };
-  const built = buildLeadCaptureResult(channels, {
+  if (thinShell && Object.values(channels).filter(Boolean).length < 2) return null;
+  return buildLeadCaptureResult(channels, {
     phoneTypeEstimate: estimatePhoneType(phone),
     chatProvider: ch.chatProvider,
     source: 'Live HTML scan + offline phone-type estimate',
-  });
-  return built;
+  }, { thin: thinShell });
 }
 
-function buildTrustSignals(html) {
-  const t = detectTrust(html);
+function buildTrustSignals(html, ctx = {}) {
+  const { structured = {}, thinShell = false } = ctx;
+  const t = detectTrust(html, structured);
+  if (thinShell && [t.licensed || t.insured, t.testimonials, t.guarantee].filter(Boolean).length < 2) return null;
   const checks = [
-    { label: 'Licensed / insured stated', ok: t.licensed || t.insured, value: (t.licensed || t.insured) ? 'Yes' : 'Not stated', weight: 1.5 },
-    { label: 'Customer testimonials', ok: t.testimonials, value: t.testimonials ? 'On site' : 'Not found', weight: 1 },
-    { label: 'Satisfaction guarantee / warranty', ok: t.guarantee, value: t.guarantee ? 'Yes' : 'Not stated', weight: 1 },
-    { label: 'Certifications or awards', ok: t.certifications, value: t.certifications ? 'Yes' : 'Not found', bonus: true, weight: 6 },
-    { label: 'Financing offered', ok: t.financing, value: t.financing ? 'Yes' : 'No', bonus: true, weight: 5 },
-    { label: 'BBB / accreditation', ok: t.bbb, value: t.bbb ? 'Yes' : 'Not found', bonus: true, weight: 5 },
+    mkCheck('Licensed / insured stated', t.licensed || t.insured, 'Yes', 'Not stated', { weight: 1.5 }, thinShell),
+    mkCheck('Customer testimonials', t.testimonials, 'On site', 'Not found', { weight: 1 }, thinShell && !structured.aggregateRating),
+    mkCheck('Satisfaction guarantee / warranty', t.guarantee, 'Yes', 'Not stated', { weight: 1 }, thinShell),
+    // bonus checks: a missing bonus never hurts the score anyway, so leave them
+    // as plain "not found" rather than cluttering with neutral rows
+    mkCheck('Certifications or awards', t.certifications, 'Yes', 'Not found', { weight: 6, bonus: true }, false),
+    mkCheck('Financing offered', t.financing, 'Yes', 'No', { weight: 5, bonus: true }, false),
+    mkCheck('BBB / accreditation', t.bbb, 'Yes', 'Not found', { weight: 5, bonus: true }, false),
   ];
   return {
     score: scoreChecks(checks),
@@ -195,17 +240,19 @@ function buildTrustSignals(html) {
   };
 }
 
-// Visibility is assembled in the pipeline from Places (GBP) + these HTML
-// fundamentals, so we expose the raw signals rather than a full category.
-function siteSignalsForVisibility(html, finalUrl) {
-  const basics = detectSiteBasics(html, finalUrl);
-  const tracking = detectTracking(html);
+// Visibility is assembled in the pipeline from Places (GBP) + these site
+// fundamentals. `rendered` (PageSpeed) is preferred over raw-HTML regex; may be
+// called with html=null when only the PageSpeed render is available.
+function siteSignalsForVisibility(html, finalUrl, ctx = {}) {
+  const { rendered = {} } = ctx;
+  const basics = detectSiteBasics(html, finalUrl, rendered);
+  const tracking = detectTracking(html || '');
   return { https: basics.https, mobile: basics.mobile, indexed: basics.indexed, measures: tracking.any, tracking };
 }
 
 module.exports = {
   fetchSiteHtml, detectChat, detectHosting, detectTracking,
-  detectChannels, detectTrust, detectSiteBasics, detectHours,
+  detectChannels, detectTrust, detectSiteBasics, detectHours, isThinShell,
   buildCustomerExperience, buildLeadCapture, buildTrustSignals,
   siteSignalsForVisibility,
 };
