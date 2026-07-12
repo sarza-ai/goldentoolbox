@@ -96,13 +96,11 @@ function catReputation(r) {
   const recentDays = r.int(2, 210);      // age of the most recent review
   const last90 = r.int(0, 18);           // reviews added in the last 90 days
   const replyRate = r.int(0, 90);
-  const five = r.int(40, 80), four = r.int(8, 25), three = r.int(2, 12);
-  const two = r.int(0, 8), one = 100 - five - four - three - two;
-  const dist = { 5: five, 4: four, 3: three, 2: Math.max(0, two), 1: Math.max(0, one) };
+  // Keep to 2 samples and no distribution bars so the mock Reputation card
+  // stays the same height as the live one and the grid rows line up.
   const samples = [
     { author: 'Mike R.', rating: 5, text: 'Showed up on time, did great work, cleaned up after. Would use again.', reply: replyRate > 50 },
     { author: 'Sarah T.', rating: 4, text: 'Solid job overall, took a day longer than quoted but the result is great.', reply: replyRate > 70 },
-    { author: 'Dan K.', rating: rating < 4 ? 2 : 5, text: rating < 4 ? 'Hard to get a callback. Work was fine once they showed.' : 'Best in town, hands down.', reply: false },
   ];
   const checks = [
     { label: 'Average rating', ok: rating >= 4.3, value: rating.toFixed(1) + '★', weight: 2 },
@@ -114,7 +112,7 @@ function catReputation(r) {
   return {
     score: scoreChecks(checks),
     summary: `${rating.toFixed(1)}★ across ${count} Google reviews${recentDays <= 60 ? ', with fresh activity' : ' — but reviews have gone quiet'}.`,
-    details: { rating, count, recentDays, last90, replyRate, distribution: dist, samples, source: 'Google (up to 5 most recent shown)' },
+    details: { rating, count, recentDays, last90, replyRate, distribution: null, samples, source: 'Google (2 most recent shown)' },
     checks,
   };
 }

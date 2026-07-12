@@ -115,7 +115,9 @@ function buildReputation(details) {
   const rating = details.rating || 0;
   const count = details.user_ratings_total || 0;
   const revs = details.reviews || [];
-  const samples = revs.slice(0, 5).map((r) => ({
+  // Cap at 2 samples so the Reputation card stays close in height to the other
+  // category cards and the two-column grid rows line up.
+  const samples = revs.slice(0, 2).map((r) => ({
     author: r.author_name, rating: r.rating, text: r.text, reply: null,
   }));
   const newestSec = revs.reduce((mx, r) => Math.max(mx, r.time || 0), 0);
@@ -132,7 +134,7 @@ function buildReputation(details) {
     summary: `${rating.toFixed(1)}★ across ${count} Google reviews${fresh ? ', with fresh activity' : recentDays != null ? ' — reviews have gone quiet' : ''} (live).`,
     details: {
       rating, count, recentDays, replyRate: null, distribution: null, samples,
-      source: 'Google Places (live) — up to 5 most recent reviews shown; reply data is not exposed by the API',
+      source: 'Google Places (live) — 2 most recent reviews shown; reply data is not exposed by the API',
     },
     checks,
   };
