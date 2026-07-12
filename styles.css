@@ -141,6 +141,14 @@ h2 { font-size: clamp(30px, 4.6vw, 52px); margin-bottom: 2.6rem; }
   max-width: 56ch; margin: 0 auto 2.2rem; color: var(--muted);
   font-size: clamp(15px, 1.8vw, 18px); line-height: 1.65;
 }
+.shimmer {
+  font-weight: 700; display: inline-block;
+  background: linear-gradient(90deg, #5A7D6B 0%, var(--gold-hi) 25%, #5A7D6B 50%, var(--gold-hi) 75%, #5A7D6B 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: greenGoldShimmer 3.2s ease-in-out infinite;
+}
+@keyframes greenGoldShimmer { from { background-position: 0% 0; } to { background-position: 100% 0; } }
 .hero-ctas { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 1.6rem; }
 
 /* honest assurance bar */
