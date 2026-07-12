@@ -1,13 +1,16 @@
 'use strict';
-/* Golden Toolbox — real site HTML scan adapter (priority #3, free, no API key).
-   One fetch of the business's homepage HTML, pattern-matched for:
-   - chat widget providers (+ generic fallback)
-   - hosting platform signature
-   - analytics/ads tracking tags (Techno Stack category)
-   Returns builder-shaped results ({score, summary, checks, details}) that drop
-   straight into the pipeline via finalizeCategory, same as the PageSpeed adapter. */
+/* Golden Toolbox — real site HTML scan adapter (free, no API key).
+   One fetch of the business's homepage HTML, pattern-matched to feed several
+   categories from a single request:
+   - Customer Experience (phone/email/form/hours/mobile)
+   - Lead Capture channels (phone/email/form/chat/booking/text)
+   - Trust Signals (licensed/insured/testimonials/guarantee/certs/financing/BBB)
+   - Visibility fundamentals (HTTPS/mobile/indexable/measures-results)
+   Builders return { score, summary, checks, details } so they drop straight
+   into the pipeline via finalizeCategory, same as the PageSpeed adapter. */
 
-const { ensureHttp } = require('./util');
+const { ensureHttp, scoreChecks } = require('./util');
+const { buildLeadCaptureResult, estimatePhoneType } = require('./leadcapture');
 
 const TIMEOUT_MS = 10000;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 GoldenToolboxCheckup/1.0';
@@ -24,7 +27,6 @@ async function fetchSiteHtml(website) {
       headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml' },
     });
     if (!res.ok) return { ok: false, error: `http ${res.status}`, status: res.status };
-    // cap read size — homepage HTML only, no need for huge payloads
     const text = await res.text();
     return { ok: true, html: text.slice(0, 900000), finalUrl: res.url, status: res.status };
   } catch (e) {
@@ -44,13 +46,11 @@ const CHAT_SIGNATURES = [
   { provider: 'LiveChat', pattern: /cdn\.livechatinc\.com|__lc\s*=/i },
   { provider: 'Facebook Messenger', pattern: /fb-customerchat|connect\.facebook\.net\/[^"']+\/sdk\/xfbml\.customerchat/i },
   { provider: 'HubSpot Chat', pattern: /js\.hs-scripts\.com|hubspot-messages-iframe-container|hscta\.net/i },
-  // common widgets beyond the explicit spec list — strengthens the generic net
   { provider: 'Crisp', pattern: /client\.crisp\.chat/i },
   { provider: 'Freshchat', pattern: /wchat\.freshchat\.com|fcwidget/i },
   { provider: 'Zoho SalesIQ', pattern: /salesiq\.zoho|zohosalesiqwidget/i },
+  { provider: 'Podium', pattern: /connect\.podium\.com|podium-widget/i },
 ];
-
-// last-resort: a fixed-position element with chat-like naming, provider unknown
 const GENERIC_CHAT_PATTERN = /(chat[-_]?widget|chat[-_]?bubble|live[-_]?chat|chat[-_]?launcher|messenger[-_]?widget)/i;
 
 function detectChat(html) {
@@ -79,129 +79,133 @@ function detectHosting(html) {
   return 'Custom / Unknown';
 }
 
-// --- tracking tag detection (Techno Stack) --------------------------------
+// --- "do they measure results" (Analytics / Pixel — NO paid-ads requirement)
 function detectTracking(html) {
   const googleAnalytics = /gtag\(['"]config['"],\s*['"]G-|google-analytics\.com\/analytics\.js|googletagmanager\.com\/gtag\/js|ga\(['"]create['"]/i.test(html);
   const googleTagManager = /googletagmanager\.com\/gtm\.js|GTM-[A-Z0-9]+/i.test(html);
-  const googleAds = /googleadservices\.com|google_conversion_id|AW-\d{6,}/i.test(html);
-  const googleAdsConversion = /gtag\(['"]event['"],\s*['"]conversion['"]|\/pagead\/conversion/i.test(html);
   const metaPixel = /connect\.facebook\.net\/[^"']+\/fbevents\.js|fbq\(['"]init['"]/i.test(html);
-  return { googleAnalytics, googleTagManager, googleAds, googleAdsConversion, metaPixel };
+  return { googleAnalytics, googleTagManager, metaPixel, any: googleAnalytics || googleTagManager || metaPixel };
+}
+
+// --- contact channels (Customer Experience + Lead Capture) ----------------
+const BOOKING_SIGNATURES = /calendly\.com|acuityscheduling\.com|squareup\.com\/appointments|setmore\.com|housecallpro\.com|schedulicity\.com|servicetitan\.com\/book|jobber|book(?:ing)?[-_]?(now|online|widget)/i;
+const PHONE_TEXT = /(\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4})/;
+
+function detectChannels(html) {
+  const chat = detectChat(html);
+  const clickToCall = /href=["']tel:/i.test(html);
+  const phoneVisible = clickToCall || PHONE_TEXT.test(html.replace(/<[^>]+>/g, ' '));
+  const email = /href=["']mailto:/i.test(html) || /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(html);
+  const form = /<form[\s>]/i.test(html) || /wpforms|gravityforms|contact-form-7|hs-form|jotform|typeform/i.test(html);
+  const booking = BOOKING_SIGNATURES.test(html);
+  const text = /href=["']sms:/i.test(html) || /\btext (us|me)\b/i.test(html);
+  return {
+    phone: phoneVisible, email, form, chat: chat.found, booking, text,
+    clickToCall, chatProvider: chat.provider,
+  };
+}
+
+function detectHours(html) {
+  const stripped = html.replace(/<[^>]+>/g, ' ');
+  return /\b(mon|tue|wed|thu|fri|sat|sun)(day)?\b[^.]{0,40}\d/i.test(stripped) ||
+    /\b(hours|open)\b[^.]{0,30}\d{1,2}\s?(am|pm|:)/i.test(stripped) ||
+    /24\/7|open 24 hours/i.test(stripped);
+}
+
+// --- site fundamentals for Visibility -------------------------------------
+function detectSiteBasics(html, finalUrl) {
+  const https = /^https:/i.test(finalUrl || '');
+  const mobile = /<meta[^>]+name=["']viewport["']/i.test(html);
+  const indexed = !/<meta[^>]+name=["']robots["'][^>]*noindex/i.test(html);
+  return { https, mobile, indexed };
+}
+
+// --- trust signals --------------------------------------------------------
+const TRUST_PATTERNS = {
+  licensed: /\blicens(e|ed)\b|lic(?:ense)?\s*#|state licens|fully licensed/i,
+  insured: /\binsured\b|\bbonded\b|liability insurance|licensed (?:and|&) insured/i,
+  testimonials: /testimonial|what (?:our |my )?(?:customers|clients) say|customer stories|hear from our/i,
+  guarantee: /guarantee|warrant(?:y|ies)|satisfaction guaranteed|money[\s-]?back|100% satisfaction/i,
+  certifications: /\bcertified\b|certification|NATE\b|EPA certified|factory[\s-]?trained|award[\s-]?winning|angi (?:certified|super)/i,
+  financing: /financing|finance options|payment plan|0%\s?apr|affirm\.com|synchrony|wisetack|greensky/i,
+  bbb: /bbb\.org|better business bureau|bbb accredited|a\+ rating/i,
+};
+
+function detectTrust(html) {
+  const stripped = html.replace(/<script[\s\S]*?<\/script>/gi, ' ');
+  const out = {};
+  for (const k of Object.keys(TRUST_PATTERNS)) out[k] = TRUST_PATTERNS[k].test(stripped);
+  return out;
 }
 
 // --- category builders (mock-compatible shape) ----------------------------
-function buildTechnoStack(html) {
-  const t = detectTracking(html);
-  const found = Object.values(t).filter(Boolean).length;
-  const score = Math.round((found / 5) * 100);
+function buildCustomerExperience(html, finalUrl) {
+  const ch = detectChannels(html);
+  const hours = detectHours(html);
+  const { mobile } = detectSiteBasics(html, finalUrl);
+  const checks = [
+    { label: 'Phone number easy to find', ok: ch.phone, value: ch.phone ? 'Yes' : 'Hard to find', weight: 1.5 },
+    { label: 'Tap-to-call on mobile', ok: ch.clickToCall, value: ch.clickToCall ? 'Yes' : 'No', weight: 1 },
+    { label: 'Contact form on site', ok: ch.form, value: ch.form ? 'Yes' : 'No', weight: 1 },
+    { label: 'Email address available', ok: ch.email, value: ch.email ? 'Yes' : 'No', weight: 1 },
+    { label: 'Hours listed on your site', ok: hours, value: hours ? 'Yes' : 'Not found', weight: 1 },
+    { label: 'Reads well on a phone', ok: mobile, value: mobile ? 'Yes' : 'No', weight: 1 },
+  ];
   return {
-    score,
-    summary: found === 0
-      ? 'No analytics or ad tracking found on your live site — you are flying blind.'
-      : `We found ${found} of 5 key tracking tags installed on your live site.`,
+    score: scoreChecks(checks),
+    summary: ch.phone && ch.clickToCall
+      ? 'A customer can reach you quickly — the basics are in place.'
+      : 'A customer has to work harder than they should to get in touch.',
+    details: Object.assign({ hours }, ch, { source: 'Live HTML scan' }),
+    checks,
+  };
+}
+
+function buildLeadCapture(html, phone) {
+  const ch = detectChannels(html);
+  const channels = {
+    phone: ch.phone || !!phone, email: ch.email, form: ch.form,
+    chat: ch.chat, booking: ch.booking, text: ch.text,
+  };
+  const built = buildLeadCaptureResult(channels, {
+    phoneTypeEstimate: estimatePhoneType(phone),
+    chatProvider: ch.chatProvider,
+    source: 'Live HTML scan + offline phone-type estimate',
+  });
+  return built;
+}
+
+function buildTrustSignals(html) {
+  const t = detectTrust(html);
+  const checks = [
+    { label: 'Licensed / insured stated', ok: t.licensed || t.insured, value: (t.licensed || t.insured) ? 'Yes' : 'Not stated', weight: 1.5 },
+    { label: 'Customer testimonials', ok: t.testimonials, value: t.testimonials ? 'On site' : 'Not found', weight: 1 },
+    { label: 'Satisfaction guarantee / warranty', ok: t.guarantee, value: t.guarantee ? 'Yes' : 'Not stated', weight: 1 },
+    { label: 'Certifications or awards', ok: t.certifications, value: t.certifications ? 'Yes' : 'Not found', bonus: true, weight: 6 },
+    { label: 'Financing offered', ok: t.financing, value: t.financing ? 'Yes' : 'No', bonus: true, weight: 5 },
+    { label: 'BBB / accreditation', ok: t.bbb, value: t.bbb ? 'Yes' : 'Not found', bonus: true, weight: 5 },
+  ];
+  return {
+    score: scoreChecks(checks),
+    summary: (t.licensed || t.insured)
+      ? 'Your site shows some proof you\'re safe to hire — there\'s room to show more.'
+      : "Your site doesn't clearly prove you're licensed, insured, and trustworthy.",
     details: Object.assign({}, t, { source: 'Live HTML scan' }),
-    checks: [
-      { label: 'Google Analytics', ok: t.googleAnalytics, value: t.googleAnalytics ? 'Installed' : 'Missing' },
-      { label: 'Google Tag Manager', ok: t.googleTagManager, value: t.googleTagManager ? 'Installed' : 'Missing' },
-      { label: 'Google Ads tag', ok: t.googleAds, value: t.googleAds ? 'Installed' : 'Missing' },
-      { label: 'Google Ads conversion', ok: t.googleAdsConversion, value: t.googleAdsConversion ? 'Installed' : 'Missing' },
-      { label: 'Meta (Facebook) Pixel', ok: t.metaPixel, value: t.metaPixel ? 'Installed' : 'Missing' },
-    ],
+    checks,
   };
 }
 
-// No free/zero-cost source (HTML scan or Google Places) exposes whether an
-// owner replies to reviews, so this used to carry the mock baseline's
-// fabricated reply-rate number straight through — which could sit right next
-// to real review samples that visibly contradicted it. Don't claim a number
-// we can't back up: say plainly it isn't available, and don't score it.
-function buildBusinessDetails(html) {
-  const chat = detectChat(html);
-  const host = detectHosting(html);
-  const blog = detectBlog(html);
-  let score = 25;
-  if (chat.found) score += 35;
-  if (host !== 'Custom / Unknown') score += 20;
-  if (blog.found) score += 20;
-  return {
-    score: Math.min(100, score),
-    summary: chat.found
-      ? `We detected a ${chat.provider} chat widget on your live site.`
-      : 'No live chat or instant-answer widget detected on your live site.',
-    details: {
-      chatWidget: chat.found,
-      chatProvider: chat.provider,
-      hostingPlatform: host,
-      hasBlog: blog.found,
-      reviewReplyRate: null,
-      source: 'Live HTML scan (chat + hosting + blog); review reply rate is not exposed by any free data source',
-    },
-    checks: [
-      { label: 'Live chat / instant answers', ok: chat.found, value: chat.found ? chat.provider : 'Not found' },
-      { label: 'Hosting platform detected', ok: host !== 'Custom / Unknown', value: host },
-      { label: 'Blog / content section', ok: blog.found, value: blog.found ? 'Found' : 'Not found' },
-      { label: 'Review reply rate', ok: true, value: 'Not available' },
-    ],
-  };
-}
-
-// --- Facebook page link detection (Directory Presence, priority #6) -------
-// Meta locked down free-tier business search years ago, so instead of
-// searching we check whether the business already links its own Facebook
-// page from its own website — high-confidence when found (they linked it
-// themselves), honestly "not found via this method" when it isn't.
-const FB_LINK_BLOCKLIST = /^(sharer|share|plugins|dialog|tr|l\.php|policies|legal|help|business|ads|watch|marketplace|gaming|groups|events|photo\.php|permalink\.php|story\.php|sdk|v\d)/i;
-
-function detectFacebookLink(html) {
-  if (!html) return { found: false };
-  const legacy = html.match(/facebook\.com\/pages\/[^/"'?]+\/(\d{6,})/i);
-  if (legacy) return { found: true, pageId: legacy[1], url: 'https://facebook.com/' + legacy[1] };
-  const re = /https?:\/\/(?:www\.)?facebook\.com\/([A-Za-z0-9._-]{2,50})/gi;
-  let m;
-  while ((m = re.exec(html))) {
-    const slug = m[1].replace(/\/$/, '');
-    if (!FB_LINK_BLOCKLIST.test(slug)) return { found: true, pageId: slug, url: 'https://facebook.com/' + slug };
-  }
-  return { found: false };
-}
-
-// X (formerly Twitter) — same self-link approach, same reasoning: no free
-// public search, but a link the business placed on their own site is strong
-// evidence either way.
-const X_LINK_BLOCKLIST = /^(intent|share|search|hashtag|home|i|compose|login|signup|widgets)/i;
-
-function detectXLink(html) {
-  if (!html) return { found: false };
-  const re = /https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/([A-Za-z0-9_]{1,30})/gi;
-  let m;
-  while ((m = re.exec(html))) {
-    const handle = m[1].replace(/\/$/, '');
-    if (!X_LINK_BLOCKLIST.test(handle)) return { found: true, handle, url: 'https://x.com/' + handle };
-  }
-  return { found: false };
-}
-
-// Nextdoor business pages are usually linked as nextdoor.com/pages/{slug} —
-// the neighborhood-recommendation app that's arguably the highest-signal
-// platform for a local trades audience specifically.
-function detectNextdoorLink(html) {
-  if (!html) return { found: false };
-  const m = html.match(/https?:\/\/(?:www\.)?nextdoor\.com\/(?:pages|business)\/([A-Za-z0-9_-]{2,80})/i);
-  if (m) return { found: true, slug: m[1], url: 'https://nextdoor.com/pages/' + m[1] };
-  return { found: false };
-}
-
-// Blog / content section on the business's own site — same-origin path or
-// nav link, not an external platform, so it's a simpler presence check.
-const BLOG_PATTERN = /href=["'](?:https?:\/\/[^"'/]+)?\/(?:blog|news|articles|insights)(?:[/"']|\/[^"']*["'])/i;
-
-function detectBlog(html) {
-  if (!html) return { found: false };
-  return { found: BLOG_PATTERN.test(html) };
+// Visibility is assembled in the pipeline from Places (GBP) + these HTML
+// fundamentals, so we expose the raw signals rather than a full category.
+function siteSignalsForVisibility(html, finalUrl) {
+  const basics = detectSiteBasics(html, finalUrl);
+  const tracking = detectTracking(html);
+  return { https: basics.https, mobile: basics.mobile, indexed: basics.indexed, measures: tracking.any, tracking };
 }
 
 module.exports = {
   fetchSiteHtml, detectChat, detectHosting, detectTracking,
-  detectFacebookLink, detectXLink, detectNextdoorLink, detectBlog,
-  buildTechnoStack, buildBusinessDetails,
+  detectChannels, detectTrust, detectSiteBasics, detectHours,
+  buildCustomerExperience, buildLeadCapture, buildTrustSignals,
+  siteSignalsForVisibility,
 };

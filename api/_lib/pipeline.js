@@ -2,28 +2,27 @@
 /* Golden Toolbox — Business Checkup pipeline orchestrator.
 
    The seam between "mock" and "real". buildReportMock produces a full baseline;
-   real adapters (PageSpeed, HTML scan, Places) are spliced in per-category
-   here, so the endpoints and UI never change. Any adapter that throws falls
-   back to the mock value for that category.
+   real adapters (PageSpeed, HTML scan, Places, Gemini) are spliced in
+   per-category here, so the endpoints and UI never change. Any adapter that
+   throws or returns nothing falls back to the mock value for that category.
 
    PageSpeed / HTML-scan / Places are mutually independent as *inputs* (each
    only needs the original business object), so their network calls run
-   concurrently — important because PageSpeed alone can take up to 30s, and
-   Vercel's function ceiling is 60s. But HTML-scan and Places both patch the
-   same 'directory' category (Facebook row vs Google row), so *applying*
-   results has to stay strictly sequential after all fetches land, or one
-   patch can silently clobber the other's write. Hence the two-phase shape
-   below: fetchX() functions never touch `report`, only runPipeline does. */
+   concurrently — important because PageSpeed alone can take up to 30s and
+   Vercel's function ceiling is 60s. Visibility is assembled from BOTH Places
+   (GBP) and the HTML scan (site fundamentals), so results are only *applied*
+   after all fetches land — the two-phase shape keeps one source from clobbering
+   another. Content Quality runs last (it needs the fetched HTML) and is the
+   only step that may add a short extra call. */
 
 const { buildReportMock, finalizeCategory } = require('./mock');
 const { CATEGORIES, rollup, grade } = require('./config');
 const { runPerformance } = require('./pagespeed');
 const {
-  fetchSiteHtml, buildTechnoStack, buildBusinessDetails, detectChat,
-  detectFacebookLink, detectXLink, detectNextdoorLink,
+  fetchSiteHtml, buildCustomerExperience, buildLeadCapture, buildTrustSignals,
+  siteSignalsForVisibility,
 } = require('./htmlscan');
-const { buildSpeedToLead } = require('./speedtolead');
-const { patchDirectoryRow } = require('./directory');
+const { buildContentQuality } = require('./content');
 const places = require('./places');
 const store = require('./store');
 
@@ -32,8 +31,14 @@ const PLACES_DAILY_CAP = parseInt(process.env.PLACES_DAILY_CAP || '300', 10);
 function replaceCategory(report, id, built) {
   const def = CATEGORIES.find((d) => d.id === id);
   const idx = report.categories.findIndex((c) => c.id === id);
-  if (!def || idx === -1) return;
+  if (!def || idx === -1 || !built) return false;
   report.categories[idx] = finalizeCategory(def, built);
+  return true;
+}
+
+function markLive(report, ids) {
+  report.apiCalls = report.apiCalls.map((c) =>
+    ids.includes(c.category) ? Object.assign({}, c, { live: true }) : c);
 }
 
 // --- fetch phase: network only, never touches `report` --------------------
@@ -92,64 +97,36 @@ async function runPipeline(business, opts = {}) {
   const report = buildReportMock(business); // baseline (all mock)
   const live = [];
 
-  // --- concurrent fetch phase: the slow part, now running in parallel ---
+  // --- concurrent fetch phase: the slow part, running in parallel ---
   const [perfResult, htmlResult, placesResult] = await Promise.all([
     fetchPerformance(business),
     fetchHtmlScan(business),
     fetchPlaces(business),
   ]);
 
-  // --- sequential apply phase: fast, CPU-only, no more network calls ---
+  // --- sequential apply phase: fast, CPU-only (except Content Quality) ---
 
-  // #2: PageSpeed
-  if (perfResult) {
-    replaceCategory(report, 'performance', perfResult);
+  // Website Performance (PageSpeed)
+  if (perfResult && replaceCategory(report, 'performance', perfResult)) {
     live.push('performance');
-    report.apiCalls = report.apiCalls.map((c) =>
-      c.category === 'performance' ? Object.assign({}, c, { live: true }) : c);
+    markLive(report, ['performance']);
   }
 
-  // #3: HTML scan — techstack, business details, + #6a Facebook directory row
-  let fetchedHtml = null; // shared with #5's after-hours-path detection below
-  let chatFoundOnSite = false;
+  // HTML-derived categories: Customer Experience, Lead Capture, Trust Signals
+  let fetchedHtml = null, siteSignals = null;
   if (htmlResult) {
     fetchedHtml = htmlResult.html;
-    chatFoundOnSite = detectChat(htmlResult.html).found;
+    siteSignals = siteSignalsForVisibility(fetchedHtml, htmlResult.finalUrl);
 
-    const techBuilt = buildTechnoStack(htmlResult.html);
-    replaceCategory(report, 'techno-stack', techBuilt);
-    live.push('techno-stack');
-
-    const bizBuilt = buildBusinessDetails(htmlResult.html);
-    replaceCategory(report, 'business-details', bizBuilt);
-    live.push('business-details');
-
-    report.apiCalls = report.apiCalls.map((c) =>
-      (c.category === 'techno-stack' || c.category === 'business-details')
-        ? Object.assign({}, c, { live: true }) : c);
-
-    // None of Facebook/X/Nextdoor offer free public business search, so
-    // instead of searching we check whether the business already links its
-    // own page from its own site — a link they placed themselves is strong
-    // evidence either way. Same technique, three platforms, one HTML fetch.
-    const socialChecks = [
-      ['Facebook', detectFacebookLink(htmlResult.html)],
-      ['X', detectXLink(htmlResult.html)],
-      ['Nextdoor', detectNextdoorLink(htmlResult.html)],
-    ];
-    socialChecks.forEach(([platform, link]) => {
-      const priorDir = report.categories.find((c) => c.id === 'directory').details;
-      const patch = link.found
-        ? patchDirectoryRow(priorDir, platform, { listed: true, accuracy: 70, live: true, displayValue: 'Listed (found on your site)' })
-        : patchDirectoryRow(priorDir, platform, { listed: false, accuracy: 0, live: true, displayValue: 'Not linked from your site' });
-      replaceCategory(report, 'directory', patch);
-    });
-    live.push('directory');
-    report.apiCalls = report.apiCalls.map((c) =>
-      c.category === 'directory' ? Object.assign({}, c, { live: true }) : c);
+    const applied = [];
+    if (replaceCategory(report, 'customer-experience', buildCustomerExperience(fetchedHtml, htmlResult.finalUrl))) applied.push('customer-experience');
+    if (replaceCategory(report, 'lead-capture', buildLeadCapture(fetchedHtml, business.phone))) applied.push('lead-capture');
+    if (replaceCategory(report, 'trust-signals', buildTrustSignals(fetchedHtml))) applied.push('trust-signals');
+    live.push(...applied);
+    markLive(report, applied);
   }
 
-  // #4: Places — GBP, reviews, directory-Google, competitors
+  // Places-derived: Reputation, Visibility (GBP + site signals), Competitors
   if (placesResult) {
     const { details, city, state, compResults } = placesResult;
     report.business = Object.assign({}, report.business, {
@@ -160,35 +137,24 @@ async function runPipeline(business, opts = {}) {
       state: state || report.business.state,
     });
 
-    replaceCategory(report, 'gbp', places.buildGbp(details));
-    live.push('gbp');
-
-    replaceCategory(report, 'reputation', places.buildReputation(details));
-    live.push('reputation');
-
-    const priorDirDetails = report.categories.find((c) => c.id === 'directory').details;
-    replaceCategory(report, 'directory', places.buildDirectoryPatch(priorDirDetails));
-    live.push('directory');
-
-    replaceCategory(report, 'competitors', places.buildCompetitors(compResults, business, details));
-    live.push('competitors');
-
-    report.apiCalls = report.apiCalls.map((c) =>
-      ['gbp', 'reputation', 'directory', 'competitors'].includes(c.category)
-        ? Object.assign({}, c, { live: true }) : c);
+    const applied = [];
+    if (replaceCategory(report, 'reputation', places.buildReputation(details))) applied.push('reputation');
+    if (replaceCategory(report, 'visibility', places.buildVisibility(details, siteSignals))) applied.push('visibility');
+    if (replaceCategory(report, 'competitors', places.buildCompetitors(compResults, business, details))) applied.push('competitors');
+    live.push(...applied);
+    markLive(report, applied);
   }
 
-  // #5: phone type estimate (offline, free, no network — always runs when a
-  // phone number exists) + after-hours path (reuses the HTML fetch above, if any)
-  if (business.phone) {
+  // Content Quality (Gemini if keyed, else free heuristic) — needs the HTML
+  if (fetchedHtml) {
     try {
-      const built = buildSpeedToLead(business.phone, chatFoundOnSite, fetchedHtml);
-      replaceCategory(report, 'speed-to-lead', built);
-      live.push('speed-to-lead');
-      report.apiCalls = report.apiCalls.map((c) =>
-        c.category === 'speed-to-lead' ? Object.assign({}, c, { live: true }) : c);
+      const cq = await buildContentQuality(fetchedHtml, business);
+      if (replaceCategory(report, 'content-quality', cq)) {
+        live.push('content-quality');
+        markLive(report, ['content-quality']);
+      }
     } catch (e) {
-      console.error('[pipeline] speed-to-lead fell back to mock:', e.message);
+      console.error('[pipeline] content-quality fell back to mock:', e.message);
     }
   }
 

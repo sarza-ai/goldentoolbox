@@ -124,10 +124,38 @@ function rankByRating(items, getRating, getReviews) {
   return items.slice().sort((a, b) => score(b) - score(a));
 }
 
+// --- maturity-band scoring ------------------------------------------------
+// The old per-category math baked in penalties: it forced every category to
+// total 100 by handing out fixed points, so *not* having a chat widget, paid
+// ad tags, or an X account silently dragged the score down — punishing normal
+// trades businesses for things they have no reason to do. This scorer fixes
+// that by splitting checks into two kinds:
+//   - core  (default): fundamentals any competent business should have.
+//            Score is the % of core weight passed.
+//   - bonus: nice-to-haves. Passing ADDS credit on top; failing does nothing.
+// So nailing the fundamentals reaches 100 on its own, and extras can only
+// lift a middling score — they can never create a penalty. A check marks
+// itself bonus with `bonus: true`; `weight` tunes its pull (core: relative
+// share of the 100; bonus: literal points added, default 6).
+function scoreChecks(checks) {
+  let coreWeight = 0, corePassed = 0, bonusCredit = 0;
+  (checks || []).forEach((c) => {
+    if (c.bonus) {
+      if (c.ok) bonusCredit += (c.weight != null ? c.weight : 6);
+    } else {
+      const w = c.weight != null ? c.weight : 1;
+      coreWeight += w;
+      if (c.ok) corePassed += w;
+    }
+  });
+  const base = coreWeight ? (corePassed / coreWeight) * 100 : 100;
+  return clamp(Math.round(base + bonusCredit), 0, 100);
+}
+
 module.exports = {
   hashStr, mulberry32, rng,
   normalizeDomain, ensureHttp,
   slugify, b64urlEncode, b64urlDecode, encodeSlug, decodeSlug, SLUG_SEP,
   clamp, escapeHtml, titleCase,
-  weightedRating, rankByRating,
+  weightedRating, rankByRating, scoreChecks,
 };

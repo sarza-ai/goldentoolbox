@@ -32,18 +32,18 @@ function scoreRing(score, size, id) {
 }
 
 const LIVE_LABELS = {
-  performance: 'Website Performance', 'business-details': 'Business Details',
-  'techno-stack': 'Techno Stack', gbp: 'Google Business Profile',
-  directory: 'Directory Presence', reputation: 'Online Reputation',
-  'speed-to-lead': 'Speed-to-Lead', competitors: 'Local Competitor Snapshot',
+  reputation: 'Reputation', visibility: 'Visibility',
+  'customer-experience': 'Customer Experience', 'lead-capture': 'Lead Capture',
+  'trust-signals': 'Trust Signals', 'content-quality': 'Content Quality',
+  performance: 'Website Performance', competitors: 'Competitive Position',
 };
 
 // Some figures are inherently estimates even on a fully-live report — phone
-// type is pattern-based (not carrier-verified), review reply rate is modeled
-// (no public API exposes it), and Facebook presence is checked via a site's
-// own links rather than a full search. This note always shows, regardless of
-// how many categories are live vs mock, on top of the live/mock breakdown.
-const ESTIMATE_NOTE = "Some figures — like phone type, review reply rate, and Facebook presence — are best-effort estimates, not verified facts. Scores reflect Golden Toolbox's own methodology, not an independent audit.";
+// type is pattern-based (not carrier-verified), and the homepage read and
+// trust-signal checks are based on what's visible on the site, not a full
+// audit. This note always shows, regardless of how many categories are live
+// vs mock, on top of the live/mock breakdown.
+const ESTIMATE_NOTE = "Some figures — like phone type and what we can read from your homepage — are best-effort estimates, not verified facts. Scores reflect Golden Toolbox's own methodology, not an independent audit.";
 
 function disclaimer(report) {
   const live = report.liveSources || [];
@@ -138,10 +138,22 @@ function competitorsExtra(d) {
   </div>`;
 }
 
+// The homepage read earns its own callout — the single most valuable fix, in
+// plain English, is more actionable than any checklist row.
+function contentExtra(d) {
+  if (!d || !d.biggestWeakness) return '';
+  const via = d.analyzedBy && /gemini/i.test(d.analyzedBy) ? 'AI homepage read' : 'Homepage read';
+  return `<div class="detail-block frame">
+    <span class="frame-tag">${escapeHtml(via)} — biggest opportunity</span>
+    <p class="frame-head">${escapeHtml(d.biggestWeakness)}</p>
+  </div>`;
+}
+
 function categoryExtra(cat) {
   if (cat.id === 'reputation') return reputationExtra(cat.details);
   if (cat.id === 'performance') return performanceExtra(cat.details);
   if (cat.id === 'competitors') return competitorsExtra(cat.details);
+  if (cat.id === 'content-quality') return contentExtra(cat.details);
   return '';
 }
 
@@ -178,7 +190,7 @@ function renderReport(report, opts = {}) {
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Business Checkup — ${escapeHtml(b.name)} | Golden Toolbox</title>
-<meta name="description" content="Free Business Checkup for ${escapeHtml(b.name)}: reviews, website, Google profile, and speed-to-lead, scored and explained." />
+<meta name="description" content="Free Business Checkup for ${escapeHtml(b.name)}: reputation, visibility, customer experience, and lead capture, scored and explained." />
 <meta name="robots" content="noindex, nofollow" />
 <meta name="theme-color" content="#F6EFE3" />
 <meta property="og:title" content="Business Checkup — ${escapeHtml(b.name)}" />
@@ -284,7 +296,7 @@ function renderLoading(slug) {
   <div class="loading-bar"><span></span></div>
 </main>
 <script>
-  var steps = ['Fetching your website…','Scanning your tech stack…','Reading your Google reviews…','Checking directories…','Measuring page speed…','Sizing up local competitors…','Scoring everything…'];
+  var steps = ['Fetching your website…','Reading your Google reviews…','Checking how customers reach you…','Looking for trust signals…','Reading your homepage…','Measuring page speed…','Sizing up local competitors…','Scoring everything…'];
   var i = 0, el = document.getElementById('loading-step');
   setInterval(function(){ i=(i+1)%steps.length; if(el) el.textContent = steps[i]; }, 1600);
   var slug = ${JSON.stringify(slug)};

@@ -4,8 +4,9 @@
    business always renders the same report. Each function is a stand-in for a
    real adapter (Places, PageSpeed, HTML scan) wired in later priorities. */
 
-const { rng, normalizeDomain, titleCase, rankByRating } = require('./util');
+const { rng, normalizeDomain, titleCase, rankByRating, scoreChecks } = require('./util');
 const { CATEGORIES, grade, rollup, framingFor } = require('./config');
+const { buildLeadCaptureResult } = require('./leadcapture');
 
 const TRADES = [
   ['concrete', 'Concrete'], ['plumb', 'Plumbing'], ['hvac', 'HVAC'],
@@ -85,129 +86,16 @@ function resolveBusinessMock(form) {
 }
 
 // --- individual category mocks --------------------------------------------
-const CHAT_PROVIDERS = ['Intercom', 'Drift', 'Tidio', 'Tawk.to', 'LiveChat', 'Facebook Messenger', 'HubSpot Chat', 'Zendesk Chat'];
-const HOSTS = ['WordPress', 'Wix', 'Squarespace', 'GoDaddy Website Builder', 'Duda', 'Webflow', 'Custom / Unknown'];
+// Every builder returns { score, summary, checks, details } where `score`
+// comes from scoreChecks() — core checks set the base, `bonus: true` checks
+// only add credit. Live adapters mirror these shapes so they drop straight in.
 
-function catBusinessDetails(r) {
-  const hasChat = r.chance(0.35);
-  const chatProvider = hasChat ? r.pick(CHAT_PROVIDERS) : null;
-  const host = r.pick(HOSTS);
-  const hasBlog = r.chance(0.3);
-  const replyRate = r.int(0, 85);
-  let score = 25;
-  if (hasChat) score += 35;
-  if (host !== 'Custom / Unknown') score += 20;
-  if (hasBlog) score += 20;
-  return {
-    score: Math.min(100, score),
-    summary: hasChat
-      ? `We detected a ${chatProvider} chat widget on your site.`
-      : 'No live chat or instant-answer widget detected on your site.',
-    details: {
-      chatWidget: hasChat,
-      chatProvider,
-      hostingPlatform: host,
-      hasBlog,
-      reviewReplyRate: replyRate,
-    },
-    checks: [
-      { label: 'Live chat / instant answers', ok: hasChat, value: hasChat ? chatProvider : 'Not found' },
-      { label: 'Hosting platform detected', ok: host !== 'Custom / Unknown', value: host },
-      { label: 'Blog / content section', ok: hasBlog, value: hasBlog ? 'Found' : 'Not found' },
-      { label: 'Review reply rate', ok: replyRate >= 50, value: replyRate + '%' },
-    ],
-  };
-}
-
-function catTechnoStack(r) {
-  const t = {
-    googleAnalytics: r.chance(0.55),
-    googleTagManager: r.chance(0.4),
-    googleAds: r.chance(0.3),
-    googleAdsConversion: r.chance(0.22),
-    metaPixel: r.chance(0.33),
-  };
-  const found = Object.values(t).filter(Boolean).length;
-  const score = Math.round((found / 5) * 100);
-  return {
-    score,
-    summary: found === 0
-      ? 'No analytics or ad tracking found — you are flying blind.'
-      : `We found ${found} of 5 key tracking tags installed.`,
-    details: t,
-    checks: [
-      { label: 'Google Analytics', ok: t.googleAnalytics, value: t.googleAnalytics ? 'Installed' : 'Missing' },
-      { label: 'Google Tag Manager', ok: t.googleTagManager, value: t.googleTagManager ? 'Installed' : 'Missing' },
-      { label: 'Google Ads tag', ok: t.googleAds, value: t.googleAds ? 'Installed' : 'Missing' },
-      { label: 'Google Ads conversion', ok: t.googleAdsConversion, value: t.googleAdsConversion ? 'Installed' : 'Missing' },
-      { label: 'Meta (Facebook) Pixel', ok: t.metaPixel, value: t.metaPixel ? 'Installed' : 'Missing' },
-    ],
-  };
-}
-
-function catGbp(r) {
-  const photos = r.int(0, 40);
-  const c = {
-    verified: r.chance(0.7),
-    hasWebsite: r.chance(0.85),
-    hasHours: r.chance(0.75),
-    hasPhone: r.chance(0.9),
-    hasAddress: r.chance(0.8),
-    photos,
-  };
-  let score = 0;
-  if (c.verified) score += 24;
-  if (c.hasWebsite) score += 16;
-  if (c.hasHours) score += 16;
-  if (c.hasPhone) score += 14;
-  if (c.hasAddress) score += 14;
-  score += Math.min(16, Math.round(photos / 2));
-  return {
-    score: Math.min(100, score),
-    summary: c.verified
-      ? 'Your Google Business Profile is claimed, with room to fill it out.'
-      : 'Your Google Business Profile appears unverified — a major visibility gap.',
-    details: c,
-    checks: [
-      { label: 'Profile verified', ok: c.verified, value: c.verified ? 'Yes' : 'No' },
-      { label: 'Website linked', ok: c.hasWebsite, value: c.hasWebsite ? 'Yes' : 'No' },
-      { label: 'Hours listed', ok: c.hasHours, value: c.hasHours ? 'Yes' : 'No' },
-      { label: 'Phone listed', ok: c.hasPhone, value: c.hasPhone ? 'Yes' : 'No' },
-      { label: 'Address listed', ok: c.hasAddress, value: c.hasAddress ? 'Yes' : 'No' },
-      { label: 'Photos', ok: photos >= 10, value: photos + ' photos' },
-    ],
-  };
-}
-
-function catDirectory(r, business) {
-  const dirs = ['Google', 'Facebook', 'Nextdoor', 'X'].map((name) => {
-    const listed = name === 'Google' ? true : r.chance(0.6);
-    const nameMatch = listed ? r.chance(0.9) : false;
-    const phoneMatch = listed ? r.chance(0.75) : false;
-    const addrMatch = listed ? r.chance(0.7) : false;
-    const matched = [nameMatch, phoneMatch, addrMatch].filter(Boolean).length;
-    return { name, listed, nameMatch, phoneMatch, addrMatch, accuracy: listed ? Math.round((matched / 3) * 100) : 0 };
-  });
-  const listedCount = dirs.filter((d) => d.listed).length;
-  const avgAcc = Math.round(dirs.reduce((a, d) => a + d.accuracy, 0) / dirs.length);
-  const score = Math.round(avgAcc * 0.6 + (listedCount / dirs.length) * 40);
-  return {
-    score: Math.min(100, score),
-    summary: `Listed on ${listedCount} of ${dirs.length} major platforms, ${avgAcc}% name/phone/address accuracy.`,
-    details: { directories: dirs, accuracy: avgAcc },
-    checks: dirs.map((d) => ({
-      label: d.name,
-      ok: d.listed && d.accuracy >= 66,
-      value: d.listed ? d.accuracy + '% match' : 'Not listed',
-    })),
-  };
-}
-
-function catReputation(r, business) {
+function catReputation(r) {
   const rating = r.int(31, 49) / 10;
   const count = r.int(3, 140);
+  const recentDays = r.int(2, 210);      // age of the most recent review
+  const last90 = r.int(0, 18);           // reviews added in the last 90 days
   const replyRate = r.int(0, 90);
-  // star distribution
   const five = r.int(40, 80), four = r.int(8, 25), three = r.int(2, 12);
   const two = r.int(0, 8), one = 100 - five - four - three - two;
   const dist = { 5: five, 4: four, 3: three, 2: Math.max(0, two), 1: Math.max(0, one) };
@@ -216,18 +104,154 @@ function catReputation(r, business) {
     { author: 'Sarah T.', rating: 4, text: 'Solid job overall, took a day longer than quoted but the result is great.', reply: replyRate > 70 },
     { author: 'Dan K.', rating: rating < 4 ? 2 : 5, text: rating < 4 ? 'Hard to get a callback. Work was fine once they showed.' : 'Best in town, hands down.', reply: false },
   ];
-  let score = Math.round((rating / 5) * 55);
-  score += Math.min(25, Math.round(count / 4));
-  score += Math.round(replyRate * 0.2);
+  const checks = [
+    { label: 'Average rating', ok: rating >= 4.3, value: rating.toFixed(1) + '★', weight: 2 },
+    { label: 'Review volume', ok: count >= 25, value: count + ' reviews', weight: 1.5 },
+    { label: 'Recent review activity', ok: recentDays <= 60, value: recentDays <= 60 ? 'Within 2 months' : `${recentDays} days ago`, weight: 1 },
+    { label: 'Steady review growth', ok: last90 >= 3, value: `${last90} in last 90 days`, bonus: true, weight: 8 },
+    { label: 'Owner responds to reviews', ok: replyRate >= 40, value: replyRate + '%', bonus: true, weight: 6 },
+  ];
   return {
-    score: Math.min(100, score),
-    summary: `${rating.toFixed(1)}★ across ${count} Google reviews, ${replyRate}% of reviews get a reply.`,
-    details: { rating, count, replyRate, distribution: dist, samples, source: 'Google (up to 5 most recent shown)' },
-    checks: [
-      { label: 'Average rating', ok: rating >= 4.3, value: rating.toFixed(1) + '★' },
-      { label: 'Review volume', ok: count >= 40, value: count + ' reviews' },
-      { label: 'Owner reply rate', ok: replyRate >= 50, value: replyRate + '%' },
-    ],
+    score: scoreChecks(checks),
+    summary: `${rating.toFixed(1)}★ across ${count} Google reviews${recentDays <= 60 ? ', with fresh activity' : ' — but reviews have gone quiet'}.`,
+    details: { rating, count, recentDays, last90, replyRate, distribution: dist, samples, source: 'Google (up to 5 most recent shown)' },
+    checks,
+  };
+}
+
+// Visibility merges the old Google Business Profile check with website
+// fundamentals (secure, mobile, indexable) and a light "do you measure
+// results" bonus — no paid-ads requirement anywhere.
+function catVisibility(r) {
+  const photos = r.int(0, 40);
+  const c = {
+    verified: r.chance(0.72),
+    hasHours: r.chance(0.75),
+    categories: r.chance(0.7),
+    photos,
+    https: r.chance(0.85),
+    mobile: r.chance(0.7),
+    indexed: r.chance(0.8),
+    measures: r.chance(0.5),
+  };
+  const checks = [
+    { label: 'Google profile claimed', ok: c.verified, value: c.verified ? 'Yes' : 'No', weight: 2 },
+    { label: 'Business hours on Google', ok: c.hasHours, value: c.hasHours ? 'Listed' : 'Missing', weight: 1 },
+    { label: 'Services / categories listed', ok: c.categories, value: c.categories ? 'Yes' : 'No', weight: 1 },
+    { label: 'Photos on your profile', ok: photos >= 10, value: photos + ' photos', weight: 1 },
+    { label: 'Website is secure (HTTPS)', ok: c.https, value: c.https ? 'Yes' : 'No', weight: 1.5 },
+    { label: 'Mobile-friendly site', ok: c.mobile, value: c.mobile ? 'Yes' : 'No', weight: 1.5 },
+    { label: 'Findable in Google search', ok: c.indexed, value: c.indexed ? 'Indexed' : 'Not found', weight: 1 },
+    { label: 'Measures results (Analytics)', ok: c.measures, value: c.measures ? 'Installed' : 'Not detected', bonus: true, weight: 6 },
+  ];
+  return {
+    score: scoreChecks(checks),
+    summary: c.verified
+      ? 'Customers can find you on Google, with room to make the storefront work harder.'
+      : 'Your Google presence has gaps that make you harder to find than your competitors.',
+    details: c,
+    checks,
+  };
+}
+
+// Customer Experience: what a real visitor runs into trying to reach you.
+function catCustomerExperience(r) {
+  const c = {
+    phoneVisible: r.chance(0.85),
+    clickToCall: r.chance(0.55),
+    email: r.chance(0.6),
+    form: r.chance(0.6),
+    hours: r.chance(0.5),
+    mobileUsable: r.chance(0.7),
+  };
+  const checks = [
+    { label: 'Phone number easy to find', ok: c.phoneVisible, value: c.phoneVisible ? 'Yes' : 'Hard to find', weight: 1.5 },
+    { label: 'Tap-to-call on mobile', ok: c.clickToCall, value: c.clickToCall ? 'Yes' : 'No', weight: 1 },
+    { label: 'Contact form on site', ok: c.form, value: c.form ? 'Yes' : 'No', weight: 1 },
+    { label: 'Email address available', ok: c.email, value: c.email ? 'Yes' : 'No', weight: 1 },
+    { label: 'Hours listed on your site', ok: c.hours, value: c.hours ? 'Yes' : 'No', weight: 1 },
+    { label: 'Reads well on a phone', ok: c.mobileUsable, value: c.mobileUsable ? 'Yes' : 'No', weight: 1 },
+  ];
+  return {
+    score: scoreChecks(checks),
+    summary: c.phoneVisible && c.clickToCall
+      ? 'A customer can reach you quickly — the basics are in place.'
+      : 'A customer has to work harder than they should to get in touch.',
+    details: c,
+    checks,
+  };
+}
+
+// Lead Capture (signature): scored by how MANY ways a customer can reach you,
+// banded — not by whether you have any one specific tool. No chat ≠ failure.
+function catLeadCapture(r) {
+  const channels = {
+    phone: r.chance(0.9),
+    email: r.chance(0.6),
+    form: r.chance(0.6),
+    chat: r.chance(0.3),
+    booking: r.chance(0.35),
+    text: r.chance(0.25),
+  };
+  return buildLeadCaptureResult(channels);
+}
+
+// Trust Signals: the proof on a site that you're safe to hire.
+function catTrustSignals(r) {
+  const c = {
+    licensed: r.chance(0.5),
+    insured: r.chance(0.45),
+    testimonials: r.chance(0.55),
+    guarantee: r.chance(0.4),
+    certifications: r.chance(0.35),
+    financing: r.chance(0.3),
+    bbb: r.chance(0.3),
+  };
+  const checks = [
+    { label: 'Licensed / insured stated', ok: c.licensed || c.insured, value: (c.licensed || c.insured) ? 'Yes' : 'Not stated', weight: 1.5 },
+    { label: 'Customer testimonials', ok: c.testimonials, value: c.testimonials ? 'On site' : 'Not found', weight: 1 },
+    { label: 'Satisfaction guarantee / warranty', ok: c.guarantee, value: c.guarantee ? 'Yes' : 'Not stated', weight: 1 },
+    { label: 'Certifications or awards', ok: c.certifications, value: c.certifications ? 'Yes' : 'Not found', bonus: true, weight: 6 },
+    { label: 'Financing offered', ok: c.financing, value: c.financing ? 'Yes' : 'No', bonus: true, weight: 5 },
+    { label: 'BBB / accreditation', ok: c.bbb, value: c.bbb ? 'Yes' : 'Not found', bonus: true, weight: 5 },
+  ];
+  return {
+    score: scoreChecks(checks),
+    summary: (c.licensed || c.insured)
+      ? 'Your site shows some proof you\'re safe to hire — there\'s room to show more.'
+      : "Your site doesn't clearly prove you're licensed, insured, and trustworthy.",
+    details: c,
+    checks,
+  };
+}
+
+// Content Quality: mock stand-in for the Gemini/heuristic homepage read.
+function catContentQuality(r) {
+  const c = {
+    clear: r.chance(0.6),
+    cta: r.chance(0.5),
+    trust: r.chance(0.55),
+    wouldHire: r.chance(0.5),
+  };
+  const weaknesses = [
+    'No clear call to action above the fold — visitors don\'t know what to do next.',
+    'It isn\'t obvious what service area you cover.',
+    'The homepage leads with "about us" instead of what you do for the customer.',
+    'No phone number or booking prompt near the top of the page.',
+  ];
+  const checks = [
+    { label: 'Clear what you do', ok: c.clear, value: c.clear ? 'Yes' : 'Unclear', weight: 1.5 },
+    { label: 'Strong call to action', ok: c.cta, value: c.cta ? 'Yes' : 'Weak', weight: 1.5 },
+    { label: 'Builds trust', ok: c.trust, value: c.trust ? 'Yes' : 'Thin', weight: 1 },
+    { label: 'Would a customer hire you from this page?', ok: c.wouldHire, value: c.wouldHire ? 'Likely' : 'Unlikely', weight: 1 },
+  ];
+  return {
+    score: scoreChecks(checks),
+    summary: c.clear && c.cta
+      ? 'Your homepage makes it clear what you do and how to move forward.'
+      : 'Your homepage makes a visitor work to understand what you do and why to choose you.',
+    details: Object.assign({}, c, { biggestWeakness: r.pick(weaknesses), analyzedBy: 'heuristic (sample)' }),
+    checks,
   };
 }
 
@@ -257,35 +281,6 @@ function catPerformance(r) {
       { label: 'Largest Contentful Paint', ok: lcp <= 2.5, value: lcp + 's' },
       { label: 'Cumulative Layout Shift', ok: cls <= 0.1, value: cls.toFixed(2) },
       { label: 'Interaction to Next Paint', ok: inp <= 200, value: inp + 'ms' },
-    ],
-  };
-}
-
-function catSpeedToLead(r, business) {
-  const types = ['Mobile', 'VoIP', 'Landline'];
-  const phoneType = r.pick(types);
-  const hasChat = r.chance(0.35);
-  const hasBookingForm = r.chance(0.5);
-  const afterHoursPath = hasChat || hasBookingForm;
-  let score = 20;
-  if (phoneType !== 'Landline') score += 25;
-  if (hasChat) score += 30;
-  if (hasBookingForm) score += 25;
-  return {
-    score: Math.min(100, score),
-    summary: afterHoursPath
-      ? 'You have at least one after-hours path, but a missed call still goes unanswered.'
-      : 'Right now, a missed call after hours just goes to voicemail — and the next name down.',
-    details: {
-      phoneTypeEstimate: phoneType,
-      estimated: true,
-      afterHoursChat: hasChat,
-      afterHoursBooking: hasBookingForm,
-    },
-    checks: [
-      { label: 'Phone type (estimated)', ok: phoneType !== 'Landline', value: phoneType },
-      { label: 'After-hours chat path', ok: hasChat, value: hasChat ? 'Yes' : 'No' },
-      { label: 'Self-serve booking / callback form', ok: hasBookingForm, value: hasBookingForm ? 'Yes' : 'No' },
     ],
   };
 }
@@ -329,25 +324,25 @@ function catCompetitors(r, business) {
 }
 
 const BUILDERS = {
-  'business-details': (r, b) => catBusinessDetails(r, b),
-  'techno-stack': (r, b) => catTechnoStack(r, b),
-  'gbp': (r, b) => catGbp(r, b),
-  'directory': (r, b) => catDirectory(r, b),
   'reputation': (r, b) => catReputation(r, b),
+  'visibility': (r, b) => catVisibility(r, b),
+  'customer-experience': (r, b) => catCustomerExperience(r, b),
+  'lead-capture': (r, b) => catLeadCapture(r, b),
+  'trust-signals': (r, b) => catTrustSignals(r, b),
+  'content-quality': (r, b) => catContentQuality(r, b),
   'performance': (r, b) => catPerformance(r, b),
-  'speed-to-lead': (r, b) => catSpeedToLead(r, b),
   'competitors': (r, b) => catCompetitors(r, b),
 };
 
 // The mock "API calls" a real run would have logged, for spend monitoring.
 const MOCK_API_CALLS = {
-  'business-details': [{ api: 'site-html-fetch', count: 1 }],
-  'techno-stack': [{ api: 'site-html-fetch', count: 1 }],
-  'gbp': [{ api: 'google-places-details', count: 1 }],
-  'directory': [{ api: 'google-places-details', count: 1 }, { api: 'site-html-fetch', count: 1 }],
   'reputation': [{ api: 'google-places-details', count: 1 }],
+  'visibility': [{ api: 'google-places-details', count: 1 }, { api: 'site-html-fetch', count: 1 }],
+  'customer-experience': [{ api: 'site-html-fetch', count: 1 }],
+  'lead-capture': [{ api: 'site-html-fetch', count: 1 }],
+  'trust-signals': [{ api: 'site-html-fetch', count: 1 }],
+  'content-quality': [{ api: 'gemini-flash (free tier)', count: 1 }],
   'performance': [{ api: 'pagespeed-insights', count: 2 }],
-  'speed-to-lead': [{ api: 'libphonenumber (offline)', count: 0 }],
   'competitors': [{ api: 'google-places-textsearch', count: 1 }],
 };
 

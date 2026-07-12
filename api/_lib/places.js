@@ -2,12 +2,11 @@
 /* Golden Toolbox — real Google Places adapter (priority #4).
    Billing-enabled Maps Platform key, lives inside the free monthly credit.
    Legacy Places API (Text Search + Place Details) — simplest surface, one key,
-   no OAuth. Feeds: address resolution, GBP, Online Reputation, the Google row
-   of Directory Presence, and the Local Competitor Snapshot. */
+   no OAuth. Feeds: address resolution, Reputation, Visibility (the Google
+   Business Profile half), and Competitive Position. */
 
-const { normalizeDomain, rankByRating } = require('./util');
+const { normalizeDomain, rankByRating, scoreChecks } = require('./util');
 const { guessTrade } = require('./mock');
-const { patchDirectoryRow } = require('./directory');
 
 const TIMEOUT_MS = 10000;
 const TEXTSEARCH_URL = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
@@ -15,7 +14,7 @@ const DETAILS_URL = 'https://maps.googleapis.com/maps/api/place/details/json';
 const DETAILS_FIELDS = [
   'name', 'formatted_address', 'formatted_phone_number', 'international_phone_number',
   'website', 'rating', 'user_ratings_total', 'reviews', 'opening_hours', 'photos',
-  'business_status', 'address_components',
+  'business_status', 'address_components', 'types',
 ].join(',');
 
 function key() { return process.env.GOOGLE_PLACES_API_KEY; }
@@ -108,71 +107,71 @@ async function resolveBusinessReal(form) {
 }
 
 // --- category builders (mock-compatible shape) ----------------------------
-function buildGbp(details) {
-  const photos = (details.photos || []).length; // API caps this list; treat as a floor
-  const hasWebsite = !!details.website;
-  const hasHours = !!details.opening_hours;
-  const hasPhone = !!(details.formatted_phone_number || details.international_phone_number);
-  const hasAddress = !!details.formatted_address;
-  // Places has no public "owner-verified" flag; business_status is the closest honest proxy.
-  const active = !details.business_status || details.business_status === 'OPERATIONAL';
-  let score = 0;
-  if (active) score += 24;
-  if (hasWebsite) score += 16;
-  if (hasHours) score += 16;
-  if (hasPhone) score += 14;
-  if (hasAddress) score += 14;
-  score += Math.min(16, Math.round(photos / 2));
-  return {
-    score: Math.min(100, score),
-    summary: active
-      ? 'Your Google Business Profile is live on Google, with room to fill it out.'
-      : `Google lists your business status as "${details.business_status}" — this needs attention.`,
-    details: { verified: active, hasWebsite, hasHours, hasPhone, hasAddress, photos, source: 'Google Places (live)' },
-    checks: [
-      { label: 'Listed & operational on Google', ok: active, value: active ? 'Yes' : (details.business_status || 'Unknown') },
-      { label: 'Website linked', ok: hasWebsite, value: hasWebsite ? 'Yes' : 'No' },
-      { label: 'Hours listed', ok: hasHours, value: hasHours ? 'Yes' : 'No' },
-      { label: 'Phone listed', ok: hasPhone, value: hasPhone ? 'Yes' : 'No' },
-      { label: 'Address listed', ok: hasAddress, value: hasAddress ? 'Yes' : 'No' },
-      { label: 'Photos', ok: photos >= 10, value: (photos >= 10 ? '10+' : photos) + ' photos' },
-    ],
-  };
-}
 
-// Places has no public "owner replied" signal at all — not even a sample.
-// Earlier this carried the mock baseline's reply-rate number through
-// unchanged, which meant a fabricated percentage could sit right next to
-// real reviews that visibly contradicted it. Don't claim a number we can't
-// back up: say plainly that it isn't available, and don't penalize or credit
-// the score for something we didn't actually measure.
+// Reputation: rating + volume + freshness. Review recency comes from the
+// timestamps on the (up to 5) reviews the API returns; owner-reply data is
+// NOT exposed by Places, so we don't claim it either way.
 function buildReputation(details) {
   const rating = details.rating || 0;
   const count = details.user_ratings_total || 0;
-  const samples = (details.reviews || []).slice(0, 5).map((r) => ({
-    author: r.author_name, rating: r.rating, text: r.text, reply: null, // null = unknown, not "confirmed no reply"
+  const revs = details.reviews || [];
+  const samples = revs.slice(0, 5).map((r) => ({
+    author: r.author_name, rating: r.rating, text: r.text, reply: null,
   }));
-  const score = Math.round((rating / 5) * 70) + Math.min(30, Math.round(count / 3.33));
+  const newestSec = revs.reduce((mx, r) => Math.max(mx, r.time || 0), 0);
+  const recentDays = newestSec ? Math.round((Date.now() / 1000 - newestSec) / 86400) : null;
+  const fresh = recentDays != null && recentDays <= 60;
+  const checks = [
+    { label: 'Average rating', ok: rating >= 4.3, value: rating ? rating.toFixed(1) + '★' : 'No rating', weight: 2 },
+    { label: 'Review volume', ok: count >= 25, value: count + ' reviews', weight: 1.5 },
+    { label: 'Recent review activity', ok: fresh, value: recentDays == null ? 'Unknown' : (fresh ? 'Within 2 months' : `${recentDays} days ago`), weight: 1 },
+    { label: 'Recent momentum', ok: recentDays != null && recentDays <= 30, value: recentDays != null && recentDays <= 30 ? 'Active' : 'Quiet', bonus: true, weight: 6 },
+  ];
   return {
-    score: Math.min(100, score),
-    summary: `${rating.toFixed(1)}★ across ${count} Google reviews (live).`,
+    score: scoreChecks(checks),
+    summary: `${rating.toFixed(1)}★ across ${count} Google reviews${fresh ? ', with fresh activity' : recentDays != null ? ' — reviews have gone quiet' : ''} (live).`,
     details: {
-      rating, count, replyRate: null, distribution: null, samples,
+      rating, count, recentDays, replyRate: null, distribution: null, samples,
       source: 'Google Places (live) — up to 5 most recent reviews shown; reply data is not exposed by the API',
     },
-    checks: [
-      { label: 'Average rating', ok: rating >= 4.3, value: rating.toFixed(1) + '★' },
-      { label: 'Review volume', ok: count >= 40, value: count + ' reviews' },
-      { label: 'Owner reply rate', ok: true, value: 'Not available (Google doesn\'t expose this)' },
-    ],
+    checks,
   };
 }
 
-// Google is ground truth here — it's the same place_id we already resolved.
-function buildDirectoryPatch(priorDetails) {
-  return patchDirectoryRow(priorDetails, 'Google', {
-    listed: true, nameMatch: true, phoneMatch: true, addrMatch: true, accuracy: 100, live: true,
-  });
+// Visibility = Google Business Profile completeness + website fundamentals.
+// siteSignals (https/mobile/indexed/measures) come from the HTML scan and may
+// be null when the site couldn't be fetched — then only the GBP half is scored.
+function buildVisibility(details, siteSignals) {
+  const photos = (details.photos || []).length; // API caps this list; treat as a floor
+  const hasHours = !!details.opening_hours;
+  const hasCategories = Array.isArray(details.types) && details.types.filter((t) => t !== 'point_of_interest' && t !== 'establishment').length > 0;
+  const active = !details.business_status || details.business_status === 'OPERATIONAL';
+  const checks = [
+    { label: 'Listed & operational on Google', ok: active, value: active ? 'Yes' : (details.business_status || 'Unknown'), weight: 2 },
+    { label: 'Business hours on Google', ok: hasHours, value: hasHours ? 'Listed' : 'Missing', weight: 1 },
+    { label: 'Services / categories listed', ok: hasCategories, value: hasCategories ? 'Yes' : 'No', weight: 1 },
+    { label: 'Photos on your profile', ok: photos >= 10, value: (photos >= 10 ? '10+' : photos) + ' photos', weight: 1 },
+  ];
+  if (siteSignals) {
+    checks.push(
+      { label: 'Website is secure (HTTPS)', ok: siteSignals.https, value: siteSignals.https ? 'Yes' : 'No', weight: 1.5 },
+      { label: 'Mobile-friendly site', ok: siteSignals.mobile, value: siteSignals.mobile ? 'Yes' : 'No', weight: 1.5 },
+      { label: 'Findable in Google search', ok: siteSignals.indexed, value: siteSignals.indexed ? 'Indexed' : 'Not found', weight: 1 },
+      { label: 'Measures results (Analytics)', ok: siteSignals.measures, value: siteSignals.measures ? 'Installed' : 'Not detected', bonus: true, weight: 6 },
+    );
+  }
+  return {
+    score: scoreChecks(checks),
+    summary: active
+      ? 'Customers can find you on Google, with room to make the storefront work harder.'
+      : `Google lists your business status as "${details.business_status}" — this needs attention.`,
+    details: {
+      verified: active, hasHours, hasCategories, photos,
+      site: siteSignals || null,
+      source: 'Google Places (live)' + (siteSignals ? ' + live site scan' : ''),
+    },
+    checks,
+  };
 }
 
 async function competitorSearch(trade, city, state) {
@@ -209,5 +208,5 @@ function buildCompetitors(results, business, details) {
 
 module.exports = {
   textSearch, placeDetails, cityStateFromAddress, resolveBusinessReal,
-  buildGbp, buildReputation, buildDirectoryPatch, competitorSearch, buildCompetitors,
+  buildReputation, buildVisibility, competitorSearch, buildCompetitors,
 };
