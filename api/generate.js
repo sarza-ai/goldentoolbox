@@ -73,12 +73,12 @@ async function fireFormspree(business, contact, url, cached) {
   } catch (e) { /* lead notify must never block report generation */ }
 }
 
-// Two independent, fire-and-forget notifications: Formspree tells the owner
-// (existing pipe, untouched), Resend confirms to whoever submitted the form
-// at the email address they typed in. Neither can block report generation.
+// Two independent, fire-and-forget notifications to you — Formspree
+// (existing pipe, untouched) and Resend (direct, no third-party dependency).
+// Both go to your inbox; neither can block report generation.
 function notify(business, contact, url, cached) {
   fireFormspree(business, contact, url, cached);
-  email.sendConfirmation(contact.email, business, url);
+  email.notifyOwner(business, contact, url, cached);
 }
 
 module.exports = async (req, res) => {
