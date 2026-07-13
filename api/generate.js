@@ -73,12 +73,18 @@ async function fireFormspree(business, contact, url, cached) {
   } catch (e) { /* lead notify must never block report generation */ }
 }
 
-// Two independent, fire-and-forget notifications to you — Formspree
-// (existing pipe, untouched) and Resend (direct, no third-party dependency).
-// Both go to your inbox; neither can block report generation.
-function notify(business, contact, url, cached) {
-  fireFormspree(business, contact, url, cached);
-  email.notifyOwner(business, contact, url, cached);
+// Two independent notifications to you — Formspree (existing pipe) and Resend
+// (direct). These MUST be awaited before the handler responds: on Vercel the
+// function is frozen the moment the HTTP response is sent, so a not-yet-settled
+// fetch left running in the background gets killed before it completes (which
+// is exactly why earlier submissions produced no email and no log at all).
+// Both helpers catch their own errors and never throw, so awaiting them can't
+// break report generation — worst case they no-op and we still respond 200.
+async function notify(business, contact, url, cached) {
+  await Promise.all([
+    fireFormspree(business, contact, url, cached),
+    email.notifyOwner(business, contact, url, cached),
+  ]);
 }
 
 module.exports = async (req, res) => {
@@ -110,15 +116,16 @@ module.exports = async (req, res) => {
   if (cachedSlug) {
     // Someone requesting an already-cached report is still a live lead event —
     // don't let the cache hit silently swallow the notification.
-    notify(business, contact, reportUrl(req, cachedSlug), true);
+    await notify(business, contact, reportUrl(req, cachedSlug), true);
     return json(res, 200, { slug: cachedSlug, cached: true });
   }
 
   // --- run the pipeline ---
   try {
     const report = await runPipeline(business, { source: body.source === 'admin' ? 'admin' : 'form' });
-    // fire-and-forget notifications (skip for admin-initiated runs)
-    if (report.source !== 'admin') notify(business, contact, reportUrl(req, report.slug), false);
+    // await notifications so they actually send before the function freezes
+    // (skip for admin-initiated runs)
+    if (report.source !== 'admin') await notify(business, contact, reportUrl(req, report.slug), false);
     return json(res, 200, { slug: report.slug, cached: false });
   } catch (e) {
     console.error('[checkup:generate] failed', e);
