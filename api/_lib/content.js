@@ -16,9 +16,14 @@
 const { scoreChecks } = require('./util');
 
 const TIMEOUT_MS = 12000;
-// gemini-1.5-* was retired Sept 2025; 2.5-flash is the current free-tier
-// multimodal model (handles both the text prompt and the screenshot vision read).
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+// Gemini model IDs churn (1.5 was retired Sept 2025; 2.5-flash later returned
+// "no longer available to new users"). So instead of a single hardcoded model
+// we try a list in order and fall through on a 404 "model not found" — the
+// `-latest` aliases always resolve to a current model, so this self-heals as
+// Google rotates availability. Override/prepend with GEMINI_MODEL if desired.
+const MODELS = [];
+if (process.env.GEMINI_MODEL) MODELS.push(process.env.GEMINI_MODEL);
+MODELS.push('gemini-flash-latest', 'gemini-2.0-flash', 'gemini-2.5-flash-lite');
 
 // --- shared: turn checks into the category result -------------------------
 function toResult(c, extra) {
@@ -117,12 +122,10 @@ function splitDataUri(dataUri) {
   return { mime: m ? m[1] : 'image/jpeg', b64 };
 }
 
-// One call site for both the text and vision prompts. `parts` is the Gemini
-// `contents[0].parts` array. Returns the parsed JSON object or null.
-async function callGemini(parts) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return null;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(key)}`;
+// Call one model once. Returns { parsed } on success, or { notFound:true } when
+// the model itself is unavailable (404) so the caller can try the next one.
+async function callModel(model, parts, key) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
@@ -135,22 +138,37 @@ async function callGemini(parts) {
         generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
       }),
     });
+    if (res.status === 404) return { notFound: true };
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      console.error('[content] gemini failed:', res.status, body.slice(0, 160));
-      return null;
+      console.error('[content] gemini failed:', model, res.status, body.slice(0, 160));
+      return {};
     }
     const data = await res.json();
     const raw = data && data.candidates && data.candidates[0] &&
       data.candidates[0].content && data.candidates[0].content.parts &&
       data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
-    return raw ? JSON.parse(raw) : null;
+    return { parsed: raw ? JSON.parse(raw) : null };
   } catch (e) {
-    console.error('[content] gemini error:', e.message);
-    return null;
+    console.error('[content] gemini error:', model, e.message);
+    return {};
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Try each candidate model in turn; advance only on a 404 (model unavailable).
+// `parts` is the Gemini `contents[0].parts` array. Returns parsed JSON or null.
+async function callGemini(parts) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return null;
+  for (const model of MODELS) {
+    const r = await callModel(model, parts, key);
+    if (r.parsed) return r.parsed;
+    if (!r.notFound) return null; // real error (rate limit, bad request) — stop
+    console.error('[content] gemini model unavailable, trying next:', model);
+  }
+  return null;
 }
 
 async function geminiContentQuality(html, business) {
